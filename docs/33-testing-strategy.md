@@ -31,6 +31,8 @@ router.ServeHTTP(rr, req)
 if rr.Code != http.StatusCreated { t.Fatalf("want 201 got %d", rr.Code) }
 ```
 
+See the matching API contracts in [/docs/22-api-spec.md](./22-api-spec.md) and domain rules in [/docs/domains/proposals/README.md](./domains/proposals/README.md); example tests live at [/backend/internal/proposals/http_test.go](../backend/internal/proposals/http_test.go).
+
 **Why this shape**
 
 - Fast: no container spin-up for unit tests

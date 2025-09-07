@@ -32,6 +32,16 @@ make dev  # runs backend+frontend
 * Docs updated (API/spec/user stories)
 * CI green
 
+## Running Tests
+
+```bash
+# Unit tests only (default)
+cd backend && go test ./...
+
+# When integration tests are added:
+go test -tags=integration ./...
+```
+
 ## Code Style
 
 * Keep handlers thin; domain/repo in `internal/<domain>`.
