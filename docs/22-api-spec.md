@@ -1,20 +1,65 @@
-# API Spec
+# API Specification (v0.1)
 
-Document REST endpoints and GraphQL (if used). Include error model and pagination.
+Base URL (dev): `http://localhost:8080`
+
+## Health
+- `GET /healthz` → `200 OK` body: `ok`
 
 ## Proposals API
+Base: `/api/proposals`
 
-Base: /api/proposals
+### List
+- `GET /api/proposals`
+- 200 OK
+```json
+[
+  {
+    "id": 2,
+    "title": "Refactor check",
+    "body": "now using repo layer",
+    "status": "open",
+    "created_at": "2025-09-07T20:40:56Z"
+  }
+]
+```
 
-GET /              → 200 OK, list of Proposal
-POST /             → 201 Created, Proposal
-GET /{id}          → 200 OK, Proposal | 404 Not Found
+### Create
 
-Proposal:
+* `POST /api/proposals`
+* Body:
+
+```json
+{
+  "title": "string (required)",
+  "body": "string (optional)"
+}
+```
+
+* 201 Created, returns Proposal.
+
+### Get by ID
+
+* `GET /api/proposals/{id}`
+* 200 OK with Proposal | 404 Not Found
+
+### Proposal schema
+
+```json
 {
   "id": 1,
   "title": "string",
   "body": "string",
-  "status": "open",
+  "status": "open|closed",
   "created_at": "RFC3339 timestamp"
 }
+```
+
+## Auth (planned)
+
+* WebAuthn bootstrap endpoints (Phase 2)
+* Session cookies; CSRF protection (details TBD)
+
+## Errors
+
+* JSON error string in body when 4xx/5xx.
+* Use `application/json` for all responses; UTF-8.

@@ -1,10 +1,17 @@
-# Principles & Evaluation Rubric
+# Cooperative Principles & Evaluation Rubric
 
-Define how we judge tech decisions.
+## Principles
+- **Democratic control:** encode transparency and auditability.
+- **Member benefit first:** optimize for adoption within 30 days.
+- **FOSS & portability:** permissive licensing; easy export; avoid lock-in.
+- **Accessibility:** low bandwidth, offline-first, a11y-aware UI.
+- **Sustainability:** small runtime footprint; green ops.
 
-- Low TCO
-- FOSS-first / permissive licenses
-- Auditability & transparency
-- Accessibility & offline-first
-- Energy efficiency & sustainability
-- Member-benefit test: adoptable in <30 days
+## Decision Rubric (score 1–5)
+- TCO (infra + training)  
+- Openness (license, docs, exports)  
+- Complexity (setup, learning)  
+- Alignment (co-op values)  
+- Performance/Resilience (offline, error handling)  
+
+Tools/features below threshold get redesigned or deferred.
