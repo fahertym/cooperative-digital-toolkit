@@ -5,6 +5,11 @@
   - Backend: `go test ./...`
   - Frontend: `pnpm build`
 
+### CI Jobs (GitHub Actions)
+
+- **backend-tests**: runs `go test ./...` on PRs and pushes to main.
+- **smoke** (manual): on the “Run workflow” button, set `run_smoke = true` to start Postgres, boot the server, and run `/scripts/smoke.sh` against `/healthz`, proposals CRUD, and CSV export.
+
 ## Near-Term Enhancements
 - Linters: golangci-lint, eslint
 - Security: CodeQL

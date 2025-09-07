@@ -42,6 +42,11 @@ cd backend && go test ./...
 go test -tags=integration ./...
 ```
 
+**Smoke test (dev):**
+- Start `docker compose up -d` and `make dev`, then run:
+  - `./scripts/smoke.sh`
+- CI can also run this manually via the “Smoke” job in GitHub Actions (workflow_dispatch).
+
 ## Code Style
 
 * Keep handlers thin; domain/repo in `internal/<domain>`.

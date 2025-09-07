@@ -1,3 +1,113 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      run_smoke:
+        description: "Run smoke (starts DB + server; slower)"
+        required: false
+        default: "false"
+
+jobs:
+  backend-tests:
+    name: Backend unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+      - name: Run tests
+        working-directory: backend
+        run: go test ./...
+
+  smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_smoke == 'true' }}
+    name: Smoke (server + DB)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: coop
+          POSTGRES_PASSWORD: coop
+          POSTGRES_DB: coopdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U coop -d coopdb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+
+      - name: Install tools (jq + psql client)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq postgresql-client
+
+      - name: Wait for Postgres
+        env:
+          PGHOST: localhost
+          PGUSER: coop
+          PGDATABASE: coopdb
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U coop -d coopdb && exit 0
+            echo "waiting for postgres ($i/30)..."; sleep 2
+          done
+          echo "postgres did not become ready in time" >&2
+          exit 1
+
+      - name: Start server (background)
+        env:
+          DATABASE_URL: postgres://coop:coop@localhost:5432/coopdb?sslmode=disable
+          PORT: "8080"
+        run: |
+          nohup bash -c 'cd backend && go run ./cmd/server' > /tmp/server.log 2>&1 & echo $! > /tmp/server.pid
+          # wait for /healthz
+          for i in {1..40}; do
+            if curl -fsS http://localhost:8080/healthz >/dev/null; then
+              echo "backend healthy"; exit 0
+            fi
+            echo "waiting for backend ($i/40)..."; sleep 2
+          done
+          echo "backend did not become healthy" >&2
+          cat /tmp/server.log || true
+          exit 1
+
+      - name: Run smoke
+        env:
+          BASE: http://localhost:8080
+        run: |
+          chmod +x scripts/smoke.sh
+          ./scripts/smoke.sh
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f /tmp/server.pid ]; then kill $(cat /tmp/server.pid) || true; fi
+
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server.log
+          path: /tmp/server.log
+
 
 name: ci
 on:
