@@ -38,8 +38,15 @@ CREATE TABLE IF NOT EXISTS proposals (
   id SERIAL PRIMARY KEY,
   title TEXT NOT NULL,
   body TEXT,
+  status TEXT DEFAULT 'open',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );`)
+	if err != nil {
+		return err
+	}
+
+	// Add status column if it doesn't exist (for existing tables)
+	_, err = d.Pool.Exec(ctx, `ALTER TABLE proposals ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'open';`)
 	return err
 }
 
