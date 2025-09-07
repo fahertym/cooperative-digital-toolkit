@@ -79,6 +79,22 @@ Emit events for:
 - Detail: render body safely; show actions based on role and status.
 - Accessibility: keyboard focus order; ensure readable contrast.
 
+#### Admin toggle & Close action (dev UI)
+
+- **Admin mode toggle:** In the header, a checkbox toggles an “admin” flag stored in `localStorage` (`isAdmin = "1"`). This is a **dev convenience only** and will be replaced by real auth (WebAuthn + session) later.
+  - Enable via UI or in console: `localStorage.setItem('isAdmin','1')`
+  - Disable: `localStorage.removeItem('isAdmin')`
+
+- **Status chip:** Each proposal shows a chip reflecting `status` (`open`, `closed`, `archived`).
+
+- **Close button (admin-only):** When Admin mode is on and `status === 'open'`, a Close button appears per proposal.
+  - Action: `POST /api/proposals/{id}/close`
+  - Success: returns updated Proposal with `status: "closed"`; button disappears.
+  - Errors: `404` if not found, `409` if not `open` (already closed/archived).
+  - Accessibility: the button label is “Close”; styled as a destructive action. Consider adding a confirm dialog in production.
+
+- **Source:** `frontend/src/main.js` (`closeProposal(id)`, admin toggle, rendering).
+
 ## Performance
 
 - Add index on `(created_at DESC)` and `(status)` (already recommended).
