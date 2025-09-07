@@ -96,7 +96,10 @@ function render(app, proposals) {
       <section>
         <div class="row">
           <h2>Proposals</h2>
-          <small>${proposals.length} total</small>
+          <div class="toolbar">
+            <small>${proposals.length} total</small>
+            <a class="btn" href="${API_BASE}/api/proposals/.csv" download>Export CSV</a>
+          </div>
         </div>
         <ul id="list"></ul>
       </section>

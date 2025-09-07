@@ -224,5 +224,46 @@ func TestCloseAlreadyClosed(t *testing.T) {
 	}
 }
 
-// helper itoa for int32
+func TestExportCSV(t *testing.T) {
+	repo := &mockRepo{}
+	r := testRouter(repo)
+
+	// Seed two proposals
+	for _, ttl := range []string{"CSV One", "CSV Two"} {
+		req := httptest.NewRequest("POST", "/api/proposals", strings.NewReader(`{"title":"`+ttl+`"}`))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, req)
+		if rr.Code != http.StatusCreated {
+			t.Fatalf("seed create: want 201 got %d", rr.Code)
+		}
+	}
+
+	// Export
+	req := httptest.NewRequest("GET", "/api/proposals/.csv", nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("csv: want 200 got %d", rr.Code)
+	}
+	ct := rr.Header().Get("Content-Type")
+	if !strings.Contains(ct, "text/csv") {
+		t.Fatalf("csv: unexpected content-type %q", ct)
+	}
+	body := rr.Body.String()
+	if !strings.HasPrefix(body, "id,title,body,status,created_at") {
+		t.Fatalf("csv header mismatch: %q", body[:min(60, len(body))])
+	}
+	if !strings.Contains(body, "CSV One") || !strings.Contains(body, "CSV Two") {
+		t.Fatalf("csv missing rows:\n%s", body)
+	}
+}
+
 func itoa(v int32) string { return strconv.FormatInt(int64(v), 10) }
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

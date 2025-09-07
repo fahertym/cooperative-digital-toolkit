@@ -72,6 +72,10 @@ Emit events for:
 - `proposal.export` (CSV/PDF)
   - Include: actor, entity id, timestamp, payload hash or diff.
 
+## Exports
+- **CSV**: `GET /api/proposals/.csv` → columns: id, title, body, status, created_at
+- Used for quick reporting and downstream accounting/records.
+
 ## UI Notes
 
 - Creation form: title (required), body (markdown/plain).

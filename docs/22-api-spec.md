@@ -66,6 +66,11 @@ Base: `/api/proposals`
 }
 ```
 
+### Export (CSV)
+- `GET /api/proposals/.csv`
+- Returns `text/csv` with columns: `id,title,body,status,created_at`
+- Content-Disposition: `attachment; filename=proposals.csv`
+
 ## Auth (planned)
 
 * WebAuthn bootstrap endpoints (Phase 2)

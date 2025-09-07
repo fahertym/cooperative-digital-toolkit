@@ -1,10 +1,12 @@
 package proposals
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -78,5 +80,30 @@ func (h Handlers) Close(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "proposal not open", http.StatusConflict)
 	default:
 		http.Error(w, "close failed", http.StatusInternalServerError)
+	}
+}
+
+// ExportCSV streams all proposals as CSV
+func (h Handlers) ExportCSV(w http.ResponseWriter, r *http.Request) {
+	items, err := h.Repo.List(r.Context())
+	if err != nil {
+		http.Error(w, "failed to list", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", "attachment; filename=proposals.csv")
+
+	cw := csv.NewWriter(w)
+	defer cw.Flush()
+
+	_ = cw.Write([]string{"id", "title", "body", "status", "created_at"})
+	for _, p := range items {
+		_ = cw.Write([]string{
+			strconv.FormatInt(int64(p.ID), 10),
+			p.Title,
+			p.Body,
+			p.Status,
+			p.CreatedAt.UTC().Format(time.RFC3339),
+		})
 	}
 }
