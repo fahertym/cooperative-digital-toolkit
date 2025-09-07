@@ -48,8 +48,9 @@ func main() {
 			w.Header().Set("Content-Type", "application/json")
 			s.mu.Lock()
 			defer s.mu.Unlock()
-			json.NewEncoder(w).Encode(s.proposals)
+			_ = json.NewEncoder(w).Encode(s.proposals)
 		})
+
 		r.Post("/proposals", func(w http.ResponseWriter, r *http.Request) {
 			var in struct {
 				Title string `json:"title"`
@@ -63,6 +64,7 @@ func main() {
 				http.Error(w, "title required", http.StatusBadRequest)
 				return
 			}
+
 			s.mu.Lock()
 			p := Proposal{
 				ID:        s.nextID,
@@ -76,9 +78,9 @@ func main() {
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(p)
+			_ = json.NewEncoder(w).Encode(p)
 		})
-		// tiny helper to fetch one proposal if you want it later:
+
 		r.Get("/proposals/{id}", func(w http.ResponseWriter, r *http.Request) {
 			idStr := chi.URLParam(r, "id")
 			id, _ := strconv.Atoi(idStr)
@@ -87,7 +89,7 @@ func main() {
 			for _, p := range s.proposals {
 				if p.ID == id {
 					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(p)
+					_ = json.NewEncoder(w).Encode(p)
 					return
 				}
 			}

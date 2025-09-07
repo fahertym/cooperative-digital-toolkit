@@ -19,7 +19,7 @@ async function createProposal(data) {
 
 function render(app, proposals) {
   app.innerHTML = `
-    <main style="max-width: 720px; margin: 2rem auto; font-family: sans-serif;">
+    <main style="max-width: 720px; margin: 2rem auto; font-family: system-ui, sans-serif;">
       <h1>Cooperative Digital Toolkit</h1>
       <section style="padding:1rem;border:1px solid #ddd;border-radius:12px;margin:1rem 0;">
         <h2>Create Proposal</h2>
