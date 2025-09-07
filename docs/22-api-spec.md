@@ -12,7 +12,7 @@ Base: `/api/proposals`
 > - **Domain guide:** [/docs/domains/proposals/README.md](./domains/proposals/README.md)
 > - **Handler tests (reference):** [/backend/internal/proposals/http_test.go](../backend/internal/proposals/http_test.go)
 
-> Domain guide: see [/docs/domains/proposals/README.md](./domains/proposals/README.md)
+
 
 ### List
 - `GET /api/proposals`
