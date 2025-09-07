@@ -1,0 +1,26 @@
+
+# general
+.DS_Store
+*.log
+.env
+.env.*
+.vscode/
+.idea/
+node_modules/
+dist/
+build/
+coverage/
+
+# Go
+bin/
+*.exe
+*.test
+
+# Frontend
+.svelte-kit/
+pnpm-lock.yaml
+yarn.lock
+
+# n8n / Airbyte local data
+/data/*
+!.gitkeep

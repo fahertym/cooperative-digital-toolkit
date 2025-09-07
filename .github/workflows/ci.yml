@@ -1,0 +1,26 @@
+
+name: ci
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - name: Back-end tests
+        run: |
+          cd backend
+          go test ./...
+      - name: Front-end build
+        run: |
+          cd frontend
+          npm i -g pnpm
+          pnpm install
+          pnpm build

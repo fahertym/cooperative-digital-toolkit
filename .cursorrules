@@ -1,0 +1,16 @@
+
+You are assisting with an open-source Cooperative Digital Toolkit.
+
+Non-negotiables:
+- Encode cooperative values: transparency, democratic control, low TCO.
+- Prefer Go + Svelte + PostgreSQL; offline-first UX.
+- Modular monolith first, microservices only when metrics demand.
+
+Style:
+- Small, composable modules with clear interfaces.
+- Tests first; public APIs documented in /docs.
+- Avoid vendor lock-in; permissive licenses.
+
+Cursor Tasks:
+- When generating code, update docs in /docs accordingly.
+- Keep issue titles in Conventional Commits style.
