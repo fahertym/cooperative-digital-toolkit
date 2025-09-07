@@ -1,0 +1,38 @@
+site_name: Cooperative Digital Toolkit
+theme:
+  name: material
+nav:
+  - Home: docs/README.md
+  - Product:
+      - PRD: docs/10-prd.md
+      - Personas & Journeys: docs/11-personas-journeys.md
+      - User Stories: docs/12-user-stories.md
+  - Technical:
+      - Architecture: docs/20-architecture-overview.md
+      - Tech Stack: docs/21-tech-stack-rationale.md
+      - API: docs/22-api-spec.md
+      - Security & Identity: docs/24-security-identity.md
+  - Delivery:
+      - Project Plan: docs/30-project-plan.md
+      - Sprint Roadmap: docs/31-sprint-roadmap.md
+      - Contributor Guide: docs/32-contributor-guide.md
+      - Testing Strategy: docs/33-testing-strategy.md
+      - CI/CD: docs/34-ci-cd-pipeline.md
+  - Adoption:
+      - Pilot Plan: docs/40-pilot-plan.md
+      - Onboarding: docs/41-onboarding-guides.md
+      - Training: docs/42-training-materials.md
+      - Feedback: docs/43-feedback-loops.md
+      - Case Studies: docs/44-case-studies.md
+  - Sustainability:
+      - Funding Plan: docs/50-funding-plan.md
+      - Licensing: docs/51-licensing-policy.md
+      - Data Stewardship: docs/52-data-stewardship.md
+      - Maintenance & Support: docs/53-maintenance-support.md
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+
+

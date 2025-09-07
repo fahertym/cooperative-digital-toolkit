@@ -8,6 +8,8 @@ Base URL (dev): `http://localhost:8080`
 ## Proposals API
 Base: `/api/proposals`
 
+> Domain guide: see [/docs/domains/proposals/README.md](./domains/proposals/README.md)
+
 ### List
 - `GET /api/proposals`
 - 200 OK
