@@ -16,3 +16,7 @@ lint: ## Lint (placeholder)
 
 build: ## Build backend and frontend
 	(cd backend && go build -o ../bin/server ./cmd/server) && (cd frontend && pnpm build)
+
+migrate: ## Apply embedded migrations by starting the server briefly
+	( cd backend && DATABASE_URL=$${DATABASE_URL:-postgres://coop:coop@localhost:5432/coopdb?sslmode=disable} \
+		go run ./cmd/server & pid=$$!; sleep 2; kill $$pid || true )

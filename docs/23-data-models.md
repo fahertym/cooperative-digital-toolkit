@@ -226,6 +226,16 @@ BEGIN
 END$$;
 ```
 
+### Runtime runner
+
+This repo embeds SQL files per domain and applies them at startup:
+
+- Runner: `/backend/internal/migrate/migrate.go`
+- Proposals: `/backend/internal/proposals/migrations/*.sql` embedded via `//go:embed`
+- Server calls `proposals.ApplyMigrations()` on boot
+
+This keeps migrations versioned in the codebase, testable, and domain-owned.
+
 ---
 
 ## Example Rows

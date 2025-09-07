@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -50,6 +51,20 @@ func (m *mockRepo) Create(_ context.Context, title, body string) (Proposal, erro
 	// prepend newest
 	m.items = append([]Proposal{p}, m.items...)
 	return p, nil
+}
+
+func (m *mockRepo) Close(_ context.Context, id int32) (Proposal, error) {
+	for i, p := range m.items {
+		if p.ID == id {
+			if p.Status != "open" {
+				return Proposal{}, ErrConflict
+			}
+			p.Status = "closed"
+			m.items[i] = p
+			return p, nil
+		}
+	}
+	return Proposal{}, ErrNotFound
 }
 
 // ---- Test Router Setup ----
@@ -150,3 +165,64 @@ func TestGetNotFound(t *testing.T) {
 		t.Fatalf("expected 404, got %d", rr.Code)
 	}
 }
+
+func TestCloseHappyPath(t *testing.T) {
+	repo := &mockRepo{}
+	r := testRouter(repo)
+
+	// Create open proposal
+	reqC := httptest.NewRequest("POST", "/api/proposals", strings.NewReader(`{"title":"Close me"}`))
+	reqC.Header.Set("Content-Type", "application/json")
+	rrC := httptest.NewRecorder()
+	r.ServeHTTP(rrC, reqC)
+	if rrC.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", rrC.Code)
+	}
+	var created Proposal
+	_ = json.Unmarshal(rrC.Body.Bytes(), &created)
+
+	// Close it
+	req := httptest.NewRequest("POST", "/api/proposals/"+itoa(created.ID)+"/close", nil)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", rr.Code, rr.Body.String())
+	}
+	var closed Proposal
+	_ = json.Unmarshal(rr.Body.Bytes(), &closed)
+	if closed.Status != "closed" {
+		t.Fatalf("expected status=closed, got %s", closed.Status)
+	}
+}
+
+func TestCloseAlreadyClosed(t *testing.T) {
+	repo := &mockRepo{}
+	r := testRouter(repo)
+
+	// Create
+	reqC := httptest.NewRequest("POST", "/api/proposals", strings.NewReader(`{"title":"Twice"}`))
+	reqC.Header.Set("Content-Type", "application/json")
+	rrC := httptest.NewRecorder()
+	r.ServeHTTP(rrC, reqC)
+	var created Proposal
+	_ = json.Unmarshal(rrC.Body.Bytes(), &created)
+
+	// Close once
+	req1 := httptest.NewRequest("POST", "/api/proposals/"+itoa(created.ID)+"/close", nil)
+	rr1 := httptest.NewRecorder()
+	r.ServeHTTP(rr1, req1)
+	if rr1.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr1.Code)
+	}
+
+	// Close again -> 409
+	req2 := httptest.NewRequest("POST", "/api/proposals/"+itoa(created.ID)+"/close", nil)
+	rr2 := httptest.NewRecorder()
+	r.ServeHTTP(rr2, req2)
+	if rr2.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d", rr2.Code)
+	}
+}
+
+// helper itoa for int32
+func itoa(v int32) string { return strconv.FormatInt(int64(v), 10) }

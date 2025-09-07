@@ -10,6 +10,9 @@
 - As a *member*, I can cast a vote and see confirmation (Phase 2).
 - As an *admin*, I can export results and minutes.
 
+- As an *admin*, I can close a proposal so no further changes can occur.
+  - When I call `POST /api/proposals/{id}/close` on an open proposal, then it returns 200 and status changes to `closed`; further close attempts return 409.
+
 ## Epic: Simple Ledger (MVP-light)
 - As an *admin*, I can record dues/contributions with notes.
 - As an *admin*, I can export ledger entries to CSV for QuickBooks/Xero.

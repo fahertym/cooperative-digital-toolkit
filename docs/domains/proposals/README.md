@@ -16,7 +16,7 @@ Enable members to read and act on governance items; enable admins to run complia
 
 1. **Create** (admin): title/body → status=`open`.
 2. **Read** (member): visible in lists.
-3. **Close** (admin, Phase 1.1): status=`closed`. After closure:
+3. **Close** (admin) — `POST /api/proposals/{id}/close` (Implemented): status=`closed`. After closure:
 
    - Proposal becomes read-only.
    - Future vote endpoints should reject writes.
@@ -43,6 +43,7 @@ Enable members to read and act on governance items; enable admins to run complia
 - `GET /api/proposals` → list newest first.
 - `POST /api/proposals {title, body?}` → create (status=`open`).
 - `GET /api/proposals/{id}` → fetch by id.
+- `POST /api/proposals/{id}/close` → transition to `closed` (only from `open`).
 
 See details in [`/docs/22-api-spec.md`](../../22-api-spec.md).
 

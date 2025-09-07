@@ -45,6 +45,12 @@ Base: `/api/proposals`
 * 200 OK with Proposal | 404 Not Found
 
 ### Proposal schema
+### Close
+- `POST /api/proposals/{id}/close`
+- Transitions `status: open → closed`.
+- 200 OK with updated Proposal
+- 404 Not Found if proposal does not exist
+- 409 Conflict if proposal is not `open`
 
 ```json
 {

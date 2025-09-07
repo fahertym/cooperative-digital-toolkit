@@ -3,9 +3,11 @@ package proposals
 import "github.com/go-chi/chi/v5"
 
 func Mount(r chi.Router, h Handlers) {
-	r.Route("/proposals", func(r chi.Router) {
+	route := func(r chi.Router) {
 		r.Get("/", h.List)
 		r.Post("/", h.Create)
 		r.Get("/{id}", h.Get)
-	})
+		r.Post("/{id}/close", h.Close)
+	}
+	r.Route("/proposals", route)
 }

@@ -2,6 +2,7 @@ package proposals
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -59,4 +60,23 @@ func (h Handlers) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(p)
+}
+
+// Close transitions a proposal from open to closed.
+// POST /api/proposals/{id}/close
+func (h Handlers) Close(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id64, _ := strconv.ParseInt(idStr, 10, 32)
+	p, err := h.Repo.Close(r.Context(), int32(id64))
+	switch {
+	case err == nil:
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(p)
+	case errors.Is(err, ErrNotFound):
+		http.NotFound(w, r)
+	case errors.Is(err, ErrConflict):
+		http.Error(w, "proposal not open", http.StatusConflict)
+	default:
+		http.Error(w, "close failed", http.StatusInternalServerError)
+	}
 }

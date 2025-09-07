@@ -25,9 +25,9 @@ func main() {
 	}
 	defer store.Close()
 
-	// Keep using db.AutoMigrate for now to ensure the table exists.
-	if err := store.AutoMigrate(ctx); err != nil {
-		log.Fatal("db migrate:", err)
+	// NEW: domain-owned migrations
+	if err := proposals.ApplyMigrations(ctx, store.Pool); err != nil {
+		log.Fatal("proposals migrations:", err)
 	}
 
 	corsOrigin := db.Env("CORS_ORIGIN", "http://localhost:5173")

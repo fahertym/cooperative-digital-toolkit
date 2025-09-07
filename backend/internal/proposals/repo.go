@@ -10,11 +10,13 @@ import (
 )
 
 var ErrNotFound = errors.New("proposal not found")
+var ErrConflict = errors.New("invalid state transition")
 
 type Repo interface {
 	List(ctx context.Context) ([]Proposal, error)
 	Get(ctx context.Context, id int32) (Proposal, error)
 	Create(ctx context.Context, title, body string) (Proposal, error)
+	Close(ctx context.Context, id int32) (Proposal, error)
 }
 
 type PgRepo struct {
@@ -71,6 +73,32 @@ VALUES ($1,$2,'open')
 RETURNING id, title, COALESCE(body,''), status, created_at
 `, title, body).Scan(&p.ID, &p.Title, &p.Body, &p.Status, &p.CreatedAt)
 	if err != nil {
+		return Proposal{}, err
+	}
+	return p, nil
+}
+
+func (r *PgRepo) Close(ctx context.Context, id int32) (Proposal, error) {
+	// Ensure proposal exists and is open
+	var current string
+	if err := r.Pool.QueryRow(ctx, `SELECT status FROM proposals WHERE id=$1`, id).Scan(&current); err != nil {
+		if err == pgx.ErrNoRows {
+			return Proposal{}, ErrNotFound
+		}
+		return Proposal{}, err
+	}
+	if current != "open" {
+		return Proposal{}, ErrConflict
+	}
+
+	// Transition to closed
+	var p Proposal
+	if err := r.Pool.QueryRow(ctx, `
+UPDATE proposals
+SET status='closed'
+WHERE id=$1
+RETURNING id, title, COALESCE(body,''), status, created_at
+`, id).Scan(&p.ID, &p.Title, &p.Body, &p.Status, &p.CreatedAt); err != nil {
 		return Proposal{}, err
 	}
 	return p, nil
