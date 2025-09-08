@@ -1,0 +1,57 @@
+{
+  "info": {
+    "name": "Cooperative Digital Toolkit",
+    "_postman_id": "c3b3a2f0-0001-4000-9000-000000000001",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    { "name": "Health", "request": { "method": "GET", "url": "{{baseUrl}}/healthz" } },
+    {
+      "name": "Proposals - Create",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "X-User-Id", "value": "1" }, { "key": "Content-Type", "value": "application/json" } ],
+        "url": "{{baseUrl}}/api/proposals",
+        "body": { "mode": "raw", "raw": "{\"title\":\"Test\",\"body\":\"...\"}" }
+      }
+    },
+    {
+      "name": "Votes - Cast",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "X-User-Id", "value": "1" }, { "key": "Content-Type", "value": "application/json" } ],
+        "url": "{{baseUrl}}/api/proposals/1/votes",
+        "body": { "mode": "raw", "raw": "{\"choice\":\"for\"}" }
+      }
+    },
+    { "name": "Votes - Tally", "request": { "method": "GET", "url": "{{baseUrl}}/api/proposals/1/votes/tally" } },
+    {
+      "name": "Ledger - Create (idempotent)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-User-Id", "value": "1" },
+          { "key": "X-Idempotency-Key", "value": "abc123" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{baseUrl}}/api/ledger",
+        "body": { "mode": "raw", "raw": "{\"type\":\"dues\",\"amount\":25,\"description\":\"Test\"}" }
+      }
+    },
+    { "name": "Ledger - CSV", "request": { "method": "GET", "header": [ { "key": "X-User-Id", "value": "1" } ], "url": "{{baseUrl}}/api/ledger/.csv" } },
+    {
+      "name": "Announcements - Create",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "X-User-Id", "value": "1" }, { "key": "Content-Type", "value": "application/json" } ],
+        "url": "{{baseUrl}}/api/announcements",
+        "body": { "mode": "raw", "raw": "{\"title\":\"Hello\",\"body\":\"...\"}" }
+      }
+    },
+    { "name": "Announcements - Mark Read", "request": { "method": "POST", "header": [ { "key": "X-User-Id", "value": "1" } ], "url": "{{baseUrl}}/api/announcements/1/read" } },
+    { "name": "Announcements - Unread Count", "request": { "method": "GET", "header": [ { "key": "X-User-Id", "value": "1" } ], "url": "{{baseUrl}}/api/announcements/unread?member_id=1" } }
+  ],
+  "variable": [ { "key": "baseUrl", "value": "http://localhost:8080" } ]
+}
+
+

@@ -28,7 +28,7 @@ jobs:
         run: go test ./...
 
   smoke:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_smoke == 'true' }}
+    # Always run on PR and push to main
     name: Smoke (server + DB)
     runs-on: ubuntu-latest
     services:

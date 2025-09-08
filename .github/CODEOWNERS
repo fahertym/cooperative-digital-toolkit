@@ -1,0 +1,4 @@
+# Code owners for reviews
+/backend/** @your-org/backend-team
+/docs/** @your-org/docs-team
+/scripts/** @your-org/devxp
