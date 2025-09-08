@@ -12,9 +12,9 @@ import (
 var ErrNotFound = errors.New("ledger entry not found")
 
 type Repo interface {
-	List(ctx context.Context) ([]Entry, error)
-	Get(ctx context.Context, id int32) (Entry, error)
-	Create(ctx context.Context, entryType string, amount float64, description string, memberID *int32, notes string) (Entry, error)
+	List(ctx context.Context, filters *ListFilters) ([]LedgerEntry, error)
+	Get(ctx context.Context, id int32) (LedgerEntry, error)
+	Create(ctx context.Context, entryType, description string, amount float64, memberID *int32, notes string, idempotencyKey string) (LedgerEntry, error)
 }
 
 type PgRepo struct {
@@ -25,19 +25,46 @@ func NewPgRepo(pool *pgxpool.Pool) *PgRepo {
 	return &PgRepo{Pool: pool}
 }
 
-func (r *PgRepo) List(ctx context.Context) ([]Entry, error) {
-	rows, err := r.Pool.Query(ctx, `
+func (r *PgRepo) List(ctx context.Context, filters *ListFilters) ([]LedgerEntry, error) {
+	query := `
 SELECT id, type, amount, description, member_id, COALESCE(notes,''), created_at
-FROM ledger_entries
-ORDER BY id DESC`)
+FROM ledger_entries`
+	args := []any{}
+	where := ""
+	if filters != nil {
+		argPos := 0
+		if filters.Type != "" {
+			argPos++
+			if where == "" {
+				where = " WHERE"
+			} else {
+				where += " AND"
+			}
+			where += " type=$" + itoa(argPos)
+			args = append(args, filters.Type)
+		}
+		if filters.MemberID != nil {
+			argPos++
+			if where == "" {
+				where = " WHERE"
+			} else {
+				where += " AND"
+			}
+			where += " member_id=$" + itoa(argPos)
+			args = append(args, *filters.MemberID)
+		}
+	}
+	query += where + " ORDER BY id DESC"
+
+	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []Entry
+	var out []LedgerEntry
 	for rows.Next() {
-		var e Entry
+		var e LedgerEntry
 		var memberID pgtype.Int4
 		var ts pgtype.Timestamptz
 		if err := rows.Scan(&e.ID, &e.Type, &e.Amount, &e.Description, &memberID, &e.Notes, &ts); err != nil {
@@ -52,8 +79,8 @@ ORDER BY id DESC`)
 	return out, rows.Err()
 }
 
-func (r *PgRepo) Get(ctx context.Context, id int32) (Entry, error) {
-	var e Entry
+func (r *PgRepo) Get(ctx context.Context, id int32) (LedgerEntry, error) {
+	var e LedgerEntry
 	var memberID pgtype.Int4
 	err := r.Pool.QueryRow(ctx, `
 SELECT id, type, amount, description, member_id, COALESCE(notes,''), created_at
@@ -61,9 +88,9 @@ FROM ledger_entries
 WHERE id=$1`, id).Scan(&e.ID, &e.Type, &e.Amount, &e.Description, &memberID, &e.Notes, &e.CreatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return Entry{}, ErrNotFound
+			return LedgerEntry{}, ErrNotFound
 		}
-		return Entry{}, err
+		return LedgerEntry{}, err
 	}
 	if memberID.Valid {
 		e.MemberID = &memberID.Int32
@@ -71,12 +98,34 @@ WHERE id=$1`, id).Scan(&e.ID, &e.Type, &e.Amount, &e.Description, &memberID, &e.
 	return e, nil
 }
 
-func (r *PgRepo) Create(ctx context.Context, entryType string, amount float64, description string, memberID *int32, notes string) (Entry, error) {
-	var e Entry
+func (r *PgRepo) Create(ctx context.Context, entryType, description string, amount float64, memberID *int32, notes string, idempotencyKey string) (LedgerEntry, error) {
+	var e LedgerEntry
 	var memberIDParam pgtype.Int4
 	if memberID != nil {
 		memberIDParam.Int32 = *memberID
 		memberIDParam.Valid = true
+	}
+
+	if idempotencyKey != "" && memberIDParam.Valid {
+		// Upsert on (member_id, idempotency_key)
+		err := r.Pool.QueryRow(ctx, `
+INSERT INTO ledger_entries (type, amount, description, member_id, notes, idempotency_key)
+VALUES ($1,$2,$3,$4,$5,$6)
+ON CONFLICT (member_id, idempotency_key)
+DO UPDATE SET 
+  type=EXCLUDED.type,
+  amount=EXCLUDED.amount,
+  description=EXCLUDED.description,
+  notes=EXCLUDED.notes
+RETURNING id, type, amount, description, member_id, COALESCE(notes,''), created_at
+`, entryType, amount, description, memberIDParam, notes, idempotencyKey).Scan(&e.ID, &e.Type, &e.Amount, &e.Description, &memberIDParam, &e.Notes, &e.CreatedAt)
+		if err != nil {
+			return LedgerEntry{}, err
+		}
+		if memberIDParam.Valid {
+			e.MemberID = &memberIDParam.Int32
+		}
+		return e, nil
 	}
 
 	err := r.Pool.QueryRow(ctx, `
@@ -85,10 +134,24 @@ VALUES ($1,$2,$3,$4,$5)
 RETURNING id, type, amount, description, member_id, COALESCE(notes,''), created_at
 `, entryType, amount, description, memberIDParam, notes).Scan(&e.ID, &e.Type, &e.Amount, &e.Description, &memberIDParam, &e.Notes, &e.CreatedAt)
 	if err != nil {
-		return Entry{}, err
+		return LedgerEntry{}, err
 	}
 	if memberIDParam.Valid {
 		e.MemberID = &memberIDParam.Int32
 	}
 	return e, nil
+}
+
+func itoa(v int) string {
+	const digits = "0123456789"
+	if v == 0 {
+		return "0"
+	}
+	n := v
+	buf := make([]byte, 0, 10)
+	for n > 0 {
+		buf = append([]byte{digits[n%10]}, buf...)
+		n /= 10
+	}
+	return string(buf)
 }

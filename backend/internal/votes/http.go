@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"coop.tools/backend/internal/httpmw"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -30,9 +31,8 @@ func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
 	proposalID64, _ := strconv.ParseInt(proposalIDStr, 10, 32)
 
 	var in struct {
-		MemberID int32  `json:"member_id"`
-		Choice   string `json:"choice"`
-		Notes    string `json:"notes"`
+		Choice string `json:"choice"`
+		Notes  string `json:"notes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -45,7 +45,12 @@ func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v, err := h.Repo.Create(r.Context(), int32(proposalID64), in.MemberID, in.Choice, in.Notes)
+	uID, ok := httpmw.CurrentUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	v, err := h.Repo.Create(r.Context(), int32(proposalID64), uID, in.Choice, in.Notes)
 	if err != nil {
 		switch err {
 		case ErrNotFound:
@@ -70,9 +75,8 @@ func (h Handlers) Update(w http.ResponseWriter, r *http.Request) {
 	proposalID64, _ := strconv.ParseInt(proposalIDStr, 10, 32)
 
 	var in struct {
-		MemberID int32  `json:"member_id"`
-		Choice   string `json:"choice"`
-		Notes    string `json:"notes"`
+		Choice string `json:"choice"`
+		Notes  string `json:"notes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -85,7 +89,12 @@ func (h Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v, err := h.Repo.Update(r.Context(), int32(proposalID64), in.MemberID, in.Choice, in.Notes)
+	uID, ok := httpmw.CurrentUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	v, err := h.Repo.Update(r.Context(), int32(proposalID64), uID, in.Choice, in.Notes)
 	if err != nil {
 		switch err {
 		case ErrNotFound:

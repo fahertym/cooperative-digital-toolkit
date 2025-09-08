@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"coop.tools/backend/internal/httpmw"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -13,7 +14,34 @@ type Handlers struct {
 }
 
 func (h Handlers) List(w http.ResponseWriter, r *http.Request) {
-	items, err := h.Repo.List(r.Context())
+	var memberID *int32
+	if mid := r.URL.Query().Get("member_id"); mid != "" {
+		if v, err := strconv.ParseInt(mid, 10, 32); err == nil {
+			v32 := int32(v)
+			memberID = &v32
+		} else {
+			http.Error(w, "invalid member_id", http.StatusBadRequest)
+			return
+		}
+	}
+	filters := &ListFilters{}
+	if p := r.URL.Query().Get("priority"); p != "" {
+		filters.Priority = p
+	}
+	if aid := r.URL.Query().Get("author_id"); aid != "" {
+		v, err := strconv.ParseInt(aid, 10, 32)
+		if err != nil {
+			http.Error(w, "invalid author_id", http.StatusBadRequest)
+			return
+		}
+		v32 := int32(v)
+		filters.AuthorID = &v32
+	}
+	if r.URL.Query().Get("only_unread") == "true" {
+		filters.OnlyUnread = true
+	}
+
+	items, err := h.Repo.List(r.Context(), memberID, filters)
 	if err != nil {
 		http.Error(w, "failed to list", http.StatusInternalServerError)
 		return
@@ -26,7 +54,7 @@ func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Title    string `json:"title"`
 		Body     string `json:"body"`
-		AuthorID int32  `json:"author_id"`
+		AuthorID *int32 `json:"author_id"`
 		Priority string `json:"priority"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -40,6 +68,11 @@ func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
 	if in.Priority == "" {
 		in.Priority = "normal"
 	}
+	if in.Priority != "low" && in.Priority != "normal" && in.Priority != "high" && in.Priority != "urgent" {
+		http.Error(w, "invalid priority", http.StatusBadRequest)
+		return
+	}
+
 	a, err := h.Repo.Create(r.Context(), in.Title, in.Body, in.AuthorID, in.Priority)
 	if err != nil {
 		http.Error(w, "insert failed", http.StatusInternalServerError)
@@ -52,8 +85,22 @@ func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
 
 func (h Handlers) Get(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
-	id64, _ := strconv.ParseInt(idStr, 10, 32)
-	a, err := h.Repo.Get(r.Context(), int32(id64))
+	id64, err := strconv.ParseInt(idStr, 10, 32)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	var memberID *int32
+	if mid := r.URL.Query().Get("member_id"); mid != "" {
+		if v, err := strconv.ParseInt(mid, 10, 32); err == nil {
+			v32 := int32(v)
+			memberID = &v32
+		} else {
+			http.Error(w, "invalid member_id", http.StatusBadRequest)
+			return
+		}
+	}
+	a, err := h.Repo.Get(r.Context(), int32(id64), memberID)
 	if err != nil {
 		if err == ErrNotFound {
 			http.NotFound(w, r)
@@ -64,4 +111,64 @@ func (h Handlers) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(a)
+}
+
+// MarkRead marks an announcement as read for a member.
+func (h Handlers) MarkRead(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id64, err := strconv.ParseInt(idStr, 10, 32)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	uid, ok := httpmw.CurrentUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if err := h.Repo.MarkAsRead(r.Context(), int32(id64), uid); err != nil {
+		if err == ErrNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "failed to mark read", http.StatusInternalServerError)
+		return
+	}
+	m := uid
+	a, err := h.Repo.Get(r.Context(), int32(id64), &m)
+	if err != nil {
+		if err == ErrNotFound {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "query failed", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(a)
+}
+
+// UnreadCount returns unread count for a member.
+func (h Handlers) UnreadCount(w http.ResponseWriter, r *http.Request) {
+	mid := r.URL.Query().Get("member_id")
+	if mid == "" {
+		http.Error(w, "member_id required", http.StatusBadRequest)
+		return
+	}
+	v, err := strconv.ParseInt(mid, 10, 32)
+	if err != nil {
+		http.Error(w, "invalid member_id", http.StatusBadRequest)
+		return
+	}
+	memberID := int32(v)
+	count, err := h.Repo.GetUnreadCount(r.Context(), memberID)
+	if err != nil {
+		http.Error(w, "failed to get unread count", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		MemberID    int32 `json:"member_id"`
+		UnreadCount int   `json:"unread_count"`
+	}{MemberID: memberID, UnreadCount: count})
 }

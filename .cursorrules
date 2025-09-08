@@ -39,23 +39,25 @@ proposals = [
   "POST /api/proposals/{id}/close",
   "GET /api/proposals/.csv"
 ]
-
-[api.todo]
-voting = [
-  "POST /api/proposals/{id}/votes",
-  "GET /api/proposals/{id}/votes",
-  "GET /api/proposals/{id}/tally"
+announcements = [
+  "GET /api/announcements",
+  "POST /api/announcements",
+  "GET /api/announcements/{id}",
+  "POST /api/announcements/{id}/read",
+  "GET /api/announcements/unread"
 ]
 ledger = [
   "GET /api/ledger",
   "POST /api/ledger",
   "GET /api/ledger/.csv"
 ]
-announcements = [
-  "GET /api/announcements",
-  "POST /api/announcements",
-  "POST /api/announcements/{id}/read"
+votes = [
+  "POST /api/proposals/{id}/votes",
+  "GET /api/proposals/{id}/votes",
+  "GET /api/proposals/{id}/tally"
 ]
+
+[api.todo]
 auth = [
   "POST /api/auth/register",
   "POST /api/auth/login",

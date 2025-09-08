@@ -2,6 +2,7 @@
 set -euo pipefail
 
 BASE=${BASE:-http://localhost:8080}
+USER=${USER_ID:-1}
 
 echo "== Smoke: Health =="
 curl -fsS "$BASE/healthz" && echo "ok" || (echo "health failed" && exit 1)
@@ -34,11 +35,19 @@ echo "== Ledger Smoke: List (JSON array) =="
 curl -fsS "$BASE/api/ledger" | jq 'length' || (echo "ledger list failed" && exit 1)
 echo
 
-echo "== Ledger Smoke: Create =="
+echo "== Ledger Smoke: Create (idempotent) =="
 LEDGER_ID=$(curl -fsS -X POST "$BASE/api/ledger" \
+  -H "X-User-Id: $USER" \
+  -H "X-Idempotency-Key: abc123" \
   -H 'Content-Type: application/json' \
-  -d '{"type":"dues","amount":50.00,"description":"Smoke test dues","member_id":1}' | jq -r '.id')
-echo "Created ledger entry id=$LEDGER_ID"
+  -d '{"type":"dues","amount":50.00,"description":"Smoke test dues"}' | jq -r '.id')
+echo "Created/returned ledger entry id=$LEDGER_ID"
+# Replay idempotent request
+curl -fsS -X POST "$BASE/api/ledger" \
+  -H "X-User-Id: $USER" \
+  -H "X-Idempotency-Key: abc123" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"dues","amount":50.00,"description":"Smoke test dues"}' | jq '{id,type,amount,description}'
 echo
 
 echo "== Ledger Smoke: Get =="
@@ -66,12 +75,24 @@ echo
 
 echo "== Announcements Smoke: Mark as Read =="
 curl -fsS -X POST "$BASE/api/announcements/$ANNOUNCEMENT_ID/read" \
-  -H 'Content-Type: application/json' \
-  -d '{"member_id":1}' | jq '{id,is_read}'
+  -H "X-User-Id: $USER" | jq '{id,is_read}'
 echo
 
 echo "== Announcements Smoke: Unread Count =="
-curl -fsS "$BASE/api/announcements/unread?member_id=1" | jq '{member_id,unread_count}'
+curl -fsS "$BASE/api/announcements/unread?member_id=$USER" | jq '{member_id,unread_count}'
+echo
+
+echo "== Votes Smoke: Cast and Tally =="
+PROP_ID=$(curl -fsS -X POST "$BASE/api/proposals" \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Smoke vote","body":"test"}' | jq -r '.id')
+# cast a vote
+curl -fsS -X POST "$BASE/api/proposals/$PROP_ID/votes" \
+  -H "X-User-Id: $USER" \
+  -H 'Content-Type: application/json' \
+  -d '{"choice":"for"}' | jq '{id,choice}'
+# read tally
+curl -fsS "$BASE/api/proposals/$PROP_ID/votes/tally" | jq '{proposal_id,results,quorum_met}'
 echo
 
 echo "Smoke OK ✅"

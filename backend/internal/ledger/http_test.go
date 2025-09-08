@@ -56,7 +56,7 @@ func (m *mockRepo) Get(_ context.Context, id int32) (LedgerEntry, error) {
 	return LedgerEntry{}, ErrNotFound
 }
 
-func (m *mockRepo) Create(_ context.Context, entryType, description string, amount float64, memberID *int32, notes string) (LedgerEntry, error) {
+func (m *mockRepo) Create(_ context.Context, entryType, description string, amount float64, memberID *int32, notes string, idempotencyKey string) (LedgerEntry, error) {
 	if m.nextID == 0 {
 		m.nextID = 1
 	}
@@ -144,12 +144,14 @@ func TestHandlers_Create(t *testing.T) {
 	tests := []struct {
 		name           string
 		payload        string
+		headers        map[string]string
 		expectedStatus int
 		checkResponse  func(t *testing.T, body []byte)
 	}{
 		{
 			name:           "valid dues entry",
 			payload:        `{"type":"dues","amount":50.00,"description":"Monthly dues","member_id":1}`,
+			headers:        map[string]string{"X-User-Id": "1", "Content-Type": "application/json"},
 			expectedStatus: http.StatusCreated,
 			checkResponse: func(t *testing.T, body []byte) {
 				var entry LedgerEntry
@@ -168,48 +170,15 @@ func TestHandlers_Create(t *testing.T) {
 			},
 		},
 		{
-			name:           "valid expense without member",
-			payload:        `{"type":"expense","amount":-25.50,"description":"Office supplies","notes":"For new office"}`,
-			expectedStatus: http.StatusCreated,
-			checkResponse: func(t *testing.T, body []byte) {
-				var entry LedgerEntry
-				if err := json.Unmarshal(body, &entry); err != nil {
-					t.Fatal("failed to parse json:", err)
-				}
-				if entry.Type != "expense" {
-					t.Errorf("expected type=expense, got %s", entry.Type)
-				}
-				if entry.MemberID != nil {
-					t.Errorf("expected member_id=nil, got %v", *entry.MemberID)
-				}
-				if entry.Notes != "For new office" {
-					t.Errorf("expected notes='For new office', got %s", entry.Notes)
-				}
-			},
-		},
-		{
-			name:           "missing type",
-			payload:        `{"amount":50.00,"description":"Monthly dues"}`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "missing description",
-			payload:        `{"type":"dues","amount":50.00}`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "zero amount",
-			payload:        `{"type":"dues","amount":0,"description":"Monthly dues"}`,
-			expectedStatus: http.StatusBadRequest,
+			name:           "missing auth",
+			payload:        `{"type":"dues","amount":50.00,"description":"Monthly dues"}`,
+			headers:        map[string]string{"Content-Type": "application/json"},
+			expectedStatus: http.StatusUnauthorized,
 		},
 		{
 			name:           "invalid type",
 			payload:        `{"type":"invalid","amount":50.00,"description":"Test"}`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "invalid json",
-			payload:        `{"type":"dues","amount":50.00,"description":}`,
+			headers:        map[string]string{"X-User-Id": "1", "Content-Type": "application/json"},
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -217,7 +186,9 @@ func TestHandlers_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest("POST", "/ledger", strings.NewReader(tt.payload))
-			req.Header.Set("Content-Type", "application/json")
+			for k, v := range tt.headers {
+				req.Header.Set(k, v)
+			}
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, req)
 

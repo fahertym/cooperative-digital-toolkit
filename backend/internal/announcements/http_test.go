@@ -390,10 +390,9 @@ func TestHandlers_MarkAsRead(t *testing.T) {
 	}
 	r := setupRouter(repo)
 
-	// Test marking as read
-	payload := `{"member_id":5}`
-	req := httptest.NewRequest("POST", "/announcements/1/read", strings.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
+	// Test marking as read using auth header
+	req := httptest.NewRequest("POST", "/announcements/1/read", nil)
+	req.Header.Set("X-User-Id", "5")
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 
@@ -413,8 +412,8 @@ func TestHandlers_MarkAsRead(t *testing.T) {
 	}
 
 	// Test marking non-existent announcement
-	req = httptest.NewRequest("POST", "/announcements/999/read", strings.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
+	req = httptest.NewRequest("POST", "/announcements/999/read", nil)
+	req.Header.Set("X-User-Id", "5")
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 
@@ -422,15 +421,13 @@ func TestHandlers_MarkAsRead(t *testing.T) {
 		t.Fatalf("expected 404, got %d", rr.Code)
 	}
 
-	// Test missing member_id
-	payload = `{}`
-	req = httptest.NewRequest("POST", "/announcements/1/read", strings.NewReader(payload))
-	req.Header.Set("Content-Type", "application/json")
+	// Test missing auth header
+	req = httptest.NewRequest("POST", "/announcements/1/read", nil)
 	rr = httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", rr.Code)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", rr.Code)
 	}
 }
 

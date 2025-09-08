@@ -48,7 +48,7 @@ func main() {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{corsOrigin},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Content-Type"},
+		AllowedHeaders:   []string{"Accept", "Content-Type", "X-User-Id", "X-Idempotency-Key"},
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
