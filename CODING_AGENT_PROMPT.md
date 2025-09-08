@@ -82,7 +82,7 @@ Implement the missing MVP verticals while preserving the current proposals slice
 
 1. ✅ Stabilize proposals, add OpenAPI doc for existing endpoints.
 2. ✅ Implement Ledger domain with CSV export and tests.
-3. Implement Announcements domain with read/unread and tests.
+3. ✅ Implement Announcements domain with read/unread and tests.
 4. Add Voting with quorum rules, status transitions, and event log.
 5. Add Auth baseline and replace dev "Admin mode" toggle from UI guide.
 6. Introduce offline queue and sync journal; document conflict policy.
@@ -101,11 +101,12 @@ Implement the missing MVP verticals while preserving the current proposals slice
 
 ### ✅ Completed
 - **Proposals API**: Fully implemented with all CRUD operations, CSV export, and comprehensive tests
-- **Ledger API**: Complete financial tracking system with filtering, CSV export, and comprehensive tests
-- **Database migrations**: Automated via embedded FS pattern for both domains
+- **Ledger API**: Complete financial tracking system with filtering, CSV export, and comprehensive tests  
+- **Announcements API**: Member communications with priority levels, read status tracking, and activity feeds
+- **Database migrations**: Automated via embedded FS pattern for all three domains
 - **API Documentation**: Comprehensive OpenAPI-style documentation in `/docs/22-api-spec.md`
-- **Project structure**: Modular domain pattern established with `backend/internal/{proposals,ledger}/`
-- **CI/CD**: Basic pipeline with health checks and smoke tests covering both domains
+- **Project structure**: Modular domain pattern established with `backend/internal/{proposals,ledger,announcements}/`
+- **CI/CD**: Basic pipeline with health checks and smoke tests covering all domains
 
 ### 🔧 Current Architecture
 
@@ -131,14 +132,19 @@ Implement the missing MVP verticals while preserving the current proposals slice
 - `POST /api/ledger` - Create ledger entry
 - `GET /api/ledger/{id}` - Get ledger entry by ID
 - `GET /api/ledger/.csv` - Export ledger CSV (QuickBooks/Xero compatible)
+- `GET /api/announcements` - List announcements with read status per member
+- `POST /api/announcements` - Create new announcements
+- `GET /api/announcements/{id}` - Get specific announcement with read status
+- `POST /api/announcements/{id}/read` - Mark announcement as read for member
+- `GET /api/announcements/unread?member_id=X` - Get unread count for member
 
 ### 🚧 Next Priorities (In Order)
 
-1. **Announcements Domain** - Member communications with read/unread status
-2. **Voting System** - Democracy tools with quorum rules on proposals
-3. **Authentication** - WebAuthn or email-link sessions
-4. **Frontend Migration** - Plain Svelte → SvelteKit
-5. **Offline Support** - Read cache + queued create + sync journal
+1. **Voting System** - Democracy tools with quorum rules on proposals  
+2. **Authentication** - WebAuthn or email-link sessions to replace dev toggles
+3. **Frontend Migration** - Plain Svelte → SvelteKit with offline-first PWA
+4. **Offline Support** - Read cache + queued create + sync journal
+5. **Federation Design** - CockroachDB migration path and cross-coop identity
 
 ### 🎯 Key Files to Reference
 
