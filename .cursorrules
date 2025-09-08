@@ -22,6 +22,7 @@ server_main = "backend/cmd/server/main.go"
 proposals_domain = "backend/internal/proposals"
 migrate_pkg = "backend/internal/migrate"
 docs_root = "docs"
+ai_docs = "docs/ai-generated"
 
 [stack.next]
 auth = "WebAuthn or email-link sessions; replace dev Admin toggle"

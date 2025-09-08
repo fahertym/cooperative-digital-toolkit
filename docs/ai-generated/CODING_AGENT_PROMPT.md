@@ -151,7 +151,8 @@ Implement the missing MVP verticals while preserving the current proposals slice
 - `.cursorrules` - Complete project configuration and standards
 - `docs/22-api-spec.md` - Complete API documentation (updated)
 - `docs/20-architecture-overview.md` - System architecture
+- `docs/ai-generated/` - AI progress tracking and implementation plans
 - `backend/internal/proposals/` - Reference implementation patterns
 - `backend/internal/proposals/http_test.go` - Testing patterns to follow
 
-Start with examining the proposals domain to understand the established patterns, then implement the ledger domain following the same structure and conventions.
+Start with examining the proposals domain to understand the established patterns, then implement new domains following the same structure and conventions.
