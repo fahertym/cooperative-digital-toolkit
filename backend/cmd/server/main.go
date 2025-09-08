@@ -14,6 +14,7 @@ import (
 	"coop.tools/backend/internal/db"
 	"coop.tools/backend/internal/ledger"
 	"coop.tools/backend/internal/proposals"
+	"coop.tools/backend/internal/votes"
 )
 
 func main() {
@@ -36,6 +37,9 @@ func main() {
 	}
 	if err := announcements.ApplyMigrations(ctx, store.Pool); err != nil {
 		log.Fatal("announcements migrations:", err)
+	}
+	if err := votes.ApplyMigrations(ctx, store.Pool); err != nil {
+		log.Fatal("votes migrations:", err)
 	}
 
 	corsOrigin := db.Env("CORS_ORIGIN", "http://localhost:5173")
@@ -71,6 +75,11 @@ func main() {
 		announcementsRepo := announcements.NewPgRepo(store.Pool)
 		announcementsHandlers := announcements.Handlers{Repo: announcementsRepo}
 		announcements.Mount(api, announcementsHandlers)
+
+		// Votes
+		votesRepo := votes.NewPgRepo(store.Pool)
+		votesHandlers := votes.Handlers{Repo: votesRepo}
+		votes.Mount(api, votesHandlers)
 	})
 
 	addr := ":" + db.Env("PORT", "8080")
