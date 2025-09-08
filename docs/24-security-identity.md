@@ -1,17 +1,20 @@
-# Security & Identity
+# Security and Identity
 
-## Today
-- CORS locked to frontend origin in dev
-- JSON-only API; strict content types
-- RBAC roles: admin, member (expand later)
-- TLS via reverse proxy in production
+## Temporary session model for MVP
+- Header `X-User-Id` is required on protected routes (votes POST/PUT, ledger POST, announcements read-state POST)
+- Middleware validates the header and injects `member_id` into request context
+- Invalid or missing header returns `401 Unauthorized`
 
-## Roadmap
-- WebAuthn for passwordless auth (Phase 2)
-- Sessions with HttpOnly, Secure cookies; CSRF tokens where needed
-- DID/VC integration for portable membership credentials
+## Planned upgrade path
+- Replace header-based session with WebAuthn or passwordless email link
+- Server-side session store or tokens with rotation
+- Migrate protected routes without changing domain semantics
 
-## Threat Model (initial)
-- Common web risks (XSS, CSRF, SQLi) → mitigated by headers, parameterized queries, escaping, CSRF protection
-- Privilege escalation → RBAC + event audits
-- Data exfiltration → minimal PII stored; encryption at rest (DB-level/infra)
+## Authorization notes
+- Write endpoints affected: POST votes, PUT votes, POST ledger, POST announcements/{id}/read
+- Read endpoints may enrich responses with per-member `is_read` flags when a user is present
+
+## Idempotency for resilience
+- `X-Idempotency-Key` supported on POST `/api/ledger`
+- Uniqueness enforced per `(member_id, idempotency_key)` when key is present
+- On repeat, server returns the original entry with success

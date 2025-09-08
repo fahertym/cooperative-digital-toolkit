@@ -24,6 +24,21 @@
 - Browser cache (IndexedDB); reconcile queued mutations with server.
 - Conflict policy: app-level rule, user prompt, or “last write wins” depending on entity.
 
+## Offline and Idempotency
+
+### Client queue
+- The client can queue creates while offline
+- Each queued request includes an idempotency key stored locally
+
+### Server behavior
+- For endpoints that support idempotency (ledger today), requests include `X-Idempotency-Key`
+- The server ensures one logical create per `(member_id, key)`
+- Policy: On conflict, return the original resource with success
+
+### Conflicts
+- Duplicate votes are prevented by a DB uniqueness constraint on `(proposal_id, member_id)`
+- Announcements read-state uses uniqueness on `(announcement_id, member_id)`
+
 ## Security
 - TLS terminated by reverse proxy in prod.
 - Role-based access control (RBAC) — roles: admin, member (more later).
