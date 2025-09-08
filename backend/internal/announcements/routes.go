@@ -1,8 +1,13 @@
 package announcements
 
-import "github.com/go-chi/chi/v5"
+import (
+	"log"
+
+	"github.com/go-chi/chi/v5"
+)
 
 func Mount(r chi.Router, h Handlers) {
+	log.Println("DEBUG: Mounting announcements routes")
 	route := func(r chi.Router) {
 		r.Get("/", h.List)
 		r.Post("/", h.Create)
