@@ -1,15 +1,13 @@
 package ledger
 
-import (
-	"time"
-)
+import "time"
 
-type LedgerEntry struct {
+type Entry struct {
 	ID          int32     `json:"id"`
-	Type        string    `json:"type"`        // 'dues', 'contribution', 'expense', 'income'
-	Amount      float64   `json:"amount"`      // decimal amount in dollars
-	Description string    `json:"description"` // required description
-	MemberID    *int32    `json:"member_id"`   // optional, null for org-level entries
-	Notes       string    `json:"notes"`       // optional additional notes
+	Type        string    `json:"type"`
+	Amount      float64   `json:"amount"`
+	Description string    `json:"description"`
+	MemberID    *int32    `json:"member_id"`
+	Notes       string    `json:"notes"`
 	CreatedAt   time.Time `json:"created_at"`
 }

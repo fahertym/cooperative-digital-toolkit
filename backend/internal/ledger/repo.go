@@ -3,7 +3,6 @@ package ledger
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,16 +12,9 @@ import (
 var ErrNotFound = errors.New("ledger entry not found")
 
 type Repo interface {
-	List(ctx context.Context, filters *ListFilters) ([]LedgerEntry, error)
-	Get(ctx context.Context, id int32) (LedgerEntry, error)
-	Create(ctx context.Context, entryType, description string, amount float64, memberID *int32, notes string) (LedgerEntry, error)
-}
-
-type ListFilters struct {
-	Type     string
-	MemberID *int32
-	FromDate *string // RFC3339 format
-	ToDate   *string // RFC3339 format
+	List(ctx context.Context) ([]Entry, error)
+	Get(ctx context.Context, id int32) (Entry, error)
+	Create(ctx context.Context, entryType string, amount float64, description string, memberID *int32, notes string) (Entry, error)
 }
 
 type PgRepo struct {
@@ -33,89 +25,85 @@ func NewPgRepo(pool *pgxpool.Pool) *PgRepo {
 	return &PgRepo{Pool: pool}
 }
 
-func (r *PgRepo) List(ctx context.Context, filters *ListFilters) ([]LedgerEntry, error) {
-	query := `
+func (r *PgRepo) List(ctx context.Context) ([]Entry, error) {
+	rows, err := r.Pool.Query(ctx, `
 SELECT id, type, amount, description, member_id, COALESCE(notes,''), created_at
 FROM ledger_entries
-WHERE 1=1`
-
-	args := []interface{}{}
-	argPos := 1
-
-	// Add filters
-	if filters != nil {
-		if filters.Type != "" {
-			query += ` AND type = $` + fmt.Sprintf("%d", argPos)
-			args = append(args, filters.Type)
-			argPos++
-		}
-		if filters.MemberID != nil {
-			query += ` AND member_id = $` + fmt.Sprintf("%d", argPos)
-			args = append(args, *filters.MemberID)
-			argPos++
-		}
-		if filters.FromDate != nil {
-			query += ` AND created_at >= $` + fmt.Sprintf("%d", argPos)
-			args = append(args, *filters.FromDate)
-			argPos++
-		}
-		if filters.ToDate != nil {
-			query += ` AND created_at <= $` + fmt.Sprintf("%d", argPos)
-			args = append(args, *filters.ToDate)
-			argPos++
-		}
-	}
-
-	query += `
-ORDER BY created_at DESC`
-
-	rows, err := r.Pool.Query(ctx, query, args...)
+ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []LedgerEntry
+	var out []Entry
 	for rows.Next() {
-		var entry LedgerEntry
+		var e Entry
+		var memberID pgtype.Int4
 		var ts pgtype.Timestamptz
-		if err := rows.Scan(&entry.ID, &entry.Type, &entry.Amount, &entry.Description, &entry.MemberID, &entry.Notes, &ts); err != nil {
+		if err := rows.Scan(&e.ID, &e.Type, &e.Amount, &e.Description, &memberID, &e.Notes, &ts); err != nil {
 			return nil, err
 		}
-		entry.CreatedAt = ts.Time
-		out = append(out, entry)
+		if memberID.Valid {
+			e.MemberID = &memberID.Int32
+		}
+		e.CreatedAt = ts.Time
+		out = append(out, e)
 	}
 	return out, rows.Err()
 }
 
-func (r *PgRepo) Get(ctx context.Context, id int32) (LedgerEntry, error) {
-	var entry LedgerEntry
-	var ts pgtype.Timestamptz
+func (r *PgRepo) Get(ctx context.Context, id int32) (Entry, error) {
+	var e Entry
+	var memberID pgtype.Int4
 	err := r.Pool.QueryRow(ctx, `
 SELECT id, type, amount, description, member_id, COALESCE(notes,''), created_at
 FROM ledger_entries
-WHERE id=$1`, id).Scan(&entry.ID, &entry.Type, &entry.Amount, &entry.Description, &entry.MemberID, &entry.Notes, &ts)
+WHERE id=$1`, id).Scan(&e.ID, &e.Type, &e.Amount, &e.Description, &memberID, &e.Notes, &e.CreatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return LedgerEntry{}, ErrNotFound
+			return Entry{}, ErrNotFound
 		}
-		return LedgerEntry{}, err
+		return Entry{}, err
 	}
-	entry.CreatedAt = ts.Time
-	return entry, nil
+	if memberID.Valid {
+		e.MemberID = &memberID.Int32
+	}
+	return e, nil
 }
 
-func (r *PgRepo) Create(ctx context.Context, entryType, description string, amount float64, memberID *int32, notes string) (LedgerEntry, error) {
-	var entry LedgerEntry
-	var ts pgtype.Timestamptz
+func (r *PgRepo) Create(ctx context.Context, entryType string, amount float64, description string, memberID *int32, notes string) (Entry, error) {
+	var e Entry
+	var memberIDParam pgtype.Int4
+	if memberID != nil {
+		memberIDParam.Int32 = *memberID
+		memberIDParam.Valid = true
+	}
+
 	err := r.Pool.QueryRow(ctx, `
 INSERT INTO ledger_entries (type, amount, description, member_id, notes)
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1,$2,$3,$4,$5)
 RETURNING id, type, amount, description, member_id, COALESCE(notes,''), created_at
-`, entryType, amount, description, memberID, notes).Scan(&entry.ID, &entry.Type, &entry.Amount, &entry.Description, &entry.MemberID, &entry.Notes, &ts)
+`, entryType, amount, description, memberIDParam, notes).Scan(&e.ID, &e.Type, &e.Amount, &e.Description, &memberIDParam, &e.Notes, &e.CreatedAt)
 	if err != nil {
-		return LedgerEntry{}, err
+		return Entry{}, err
 	}
-	entry.CreatedAt = ts.Time
-	return entry, nil
+	if memberIDParam.Valid {
+		e.MemberID = &memberIDParam.Int32
+	}
+	return e, nil
+}
+
+// ApplyMigrations creates the ledger_entries table and any necessary schema updates.
+func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
+	_, err := pool.Exec(ctx, `
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id SERIAL PRIMARY KEY,
+  type TEXT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  description TEXT NOT NULL,
+  member_id INTEGER,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);`)
+	return err
 }
