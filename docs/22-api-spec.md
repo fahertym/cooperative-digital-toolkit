@@ -146,11 +146,11 @@ id,title,body,status,created_at
 2,"Refactor check","now using repo layer",open,2025-01-07T20:40:56Z
 ```
 
-## Voting API (Planned - Phase 2)
+## Voting API
 
 Base: `/api/proposals/{id}/votes`
 
-> **Status:** Not yet implemented. Part of MVP Phase 2 expansion.
+> **Status:** ✅ **Implemented and working**
 
 ### POST /api/proposals/{id}/votes
 Cast a vote on an open proposal.
@@ -161,8 +161,8 @@ Cast a vote on an open proposal.
 **Request Body:**
 ```json
 {
+  "member_id": "integer (required)",
   "choice": "string (enum: 'for', 'against', 'abstain')",
-  "member_id": "integer (required, authenticated member)",
   "notes": "string (optional, member's reasoning)"
 }
 ```
@@ -174,31 +174,107 @@ Cast a vote on an open proposal.
 - `409 Conflict` - Proposal is closed, or member already voted
 - `500 Internal Server Error` - Database or server error
 
+**Example Request:**
+```json
+{
+  "member_id": 1,
+  "choice": "for",
+  "notes": "I support this proposal"
+}
+```
+
+**Example Response:**
+```json
+{
+  "id": 1,
+  "proposal_id": 12,
+  "member_id": 1,
+  "choice": "for",
+  "notes": "I support this proposal",
+  "created_at": "2025-01-08T10:15:00Z"
+}
+```
+
+### PUT /api/proposals/{id}/votes
+Update an existing vote on an open proposal.
+
+**Path Parameters:**
+- `id` (integer) - Proposal ID
+
+**Request Body:**
+```json
+{
+  "member_id": "integer (required)",
+  "choice": "string (enum: 'for', 'against', 'abstain')",
+  "notes": "string (optional, member's reasoning)"
+}
+```
+
+**Response:**
+- `200 OK` - Vote successfully updated
+- `400 Bad Request` - Invalid choice or missing member_id
+- `404 Not Found` - Proposal or vote does not exist  
+- `409 Conflict` - Proposal is closed
+- `500 Internal Server Error` - Database or server error
+
 ### GET /api/proposals/{id}/votes
-List all votes for a proposal (admin only during voting, public after close).
+List all votes for a proposal.
+
+**Path Parameters:**
+- `id` (integer) - Proposal ID
 
 **Response:**
 - `200 OK` - Array of vote objects
-- `403 Forbidden` - Insufficient permissions
 - `404 Not Found` - Proposal does not exist
+- `500 Internal Server Error` - Database or server error
 
-### GET /api/proposals/{id}/tally
-Get vote tally for a proposal.
+**Example Response:**
+```json
+[
+  {
+    "id": 1,
+    "proposal_id": 12,
+    "member_id": 1,
+    "choice": "for",
+    "notes": "I support this proposal",
+    "created_at": "2025-01-08T10:15:00Z"
+  },
+  {
+    "id": 2,
+    "proposal_id": 12,
+    "member_id": 2,
+    "choice": "against",
+    "notes": "I have concerns about this",
+    "created_at": "2025-01-08T10:16:00Z"
+  }
+]
+```
+
+### GET /api/proposals/{id}/votes/tally
+Get vote tally and results for a proposal.
+
+**Path Parameters:**
+- `id` (integer) - Proposal ID
 
 **Response:**
+- `200 OK` - Vote tally object
+- `404 Not Found` - Proposal does not exist
+- `500 Internal Server Error` - Database or server error
+
+**Example Response:**
 ```json
 {
-  "proposal_id": 1,
-  "status": "open|closed",
-  "total_eligible": 15,
-  "votes_cast": 12,
-  "quorum_met": true,
+  "proposal_id": 12,
+  "status": "open",
+  "total_eligible": 10,
+  "votes_cast": 3,
+  "quorum_met": false,
   "results": {
-    "for": 8,
-    "against": 3, 
-    "abstain": 1
+    "for": 2,
+    "against": 1,
+    "abstain": 0
   },
-  "outcome": "passed|failed|pending"
+  "outcome": "pending"
 }
 ```
 
