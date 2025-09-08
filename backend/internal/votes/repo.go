@@ -16,11 +16,11 @@ var (
 )
 
 type Repo interface {
-	List(ctx context.Context, proposalID int32) ([]Vote, error)
-	Get(ctx context.Context, proposalID, memberID int32) (Vote, error)
-	Create(ctx context.Context, proposalID, memberID int32, choice, notes string) (Vote, error)
-	Update(ctx context.Context, proposalID, memberID int32, choice, notes string) (Vote, error)
-	GetTally(ctx context.Context, proposalID int32) (Tally, error)
+    List(ctx context.Context, proposalID int32, limit, offset int) ([]Vote, error)
+    Get(ctx context.Context, proposalID, memberID int32) (Vote, error)
+    Create(ctx context.Context, proposalID, memberID int32, choice, notes string) (Vote, error)
+    Update(ctx context.Context, proposalID, memberID int32, choice, notes string) (Vote, error)
+    GetTally(ctx context.Context, proposalID int32) (Tally, error)
 }
 
 type PgRepo struct {
@@ -31,15 +31,28 @@ func NewPgRepo(pool *pgxpool.Pool) *PgRepo {
 	return &PgRepo{Pool: pool}
 }
 
-func (r *PgRepo) List(ctx context.Context, proposalID int32) ([]Vote, error) {
-	rows, err := r.Pool.Query(ctx, `
+func (r *PgRepo) List(ctx context.Context, proposalID int32, limit, offset int) ([]Vote, error) {
+    query := `
 SELECT id, proposal_id, member_id, choice, COALESCE(notes,''), created_at
 FROM votes
 WHERE proposal_id=$1
-ORDER BY created_at ASC`, proposalID)
-	if err != nil {
-		return nil, err
-	}
+ORDER BY created_at ASC`
+    args := []any{proposalID}
+    if limit > 0 {
+        query += ` LIMIT $2`
+        args = append(args, limit)
+        if offset > 0 {
+            query += ` OFFSET $3`
+            args = append(args, offset)
+        }
+    } else if offset > 0 {
+        query += ` OFFSET $2`
+        args = append(args, offset)
+    }
+    rows, err := r.Pool.Query(ctx, query, args...)
+    if err != nil {
+        return nil, err
+    }
 	defer rows.Close()
 
 	var out []Vote

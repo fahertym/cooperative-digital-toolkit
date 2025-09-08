@@ -13,10 +13,10 @@ var ErrNotFound = errors.New("proposal not found")
 var ErrConflict = errors.New("invalid state transition")
 
 type Repo interface {
-	List(ctx context.Context) ([]Proposal, error)
-	Get(ctx context.Context, id int32) (Proposal, error)
-	Create(ctx context.Context, title, body string) (Proposal, error)
-	Close(ctx context.Context, id int32) (Proposal, error)
+    List(ctx context.Context, limit, offset int) ([]Proposal, error)
+    Get(ctx context.Context, id int32) (Proposal, error)
+    Create(ctx context.Context, title, body string) (Proposal, error)
+    Close(ctx context.Context, id int32) (Proposal, error)
 }
 
 type PgRepo struct {
@@ -27,14 +27,28 @@ func NewPgRepo(pool *pgxpool.Pool) *PgRepo {
 	return &PgRepo{Pool: pool}
 }
 
-func (r *PgRepo) List(ctx context.Context) ([]Proposal, error) {
-	rows, err := r.Pool.Query(ctx, `
+func (r *PgRepo) List(ctx context.Context, limit, offset int) ([]Proposal, error) {
+    query := `
 SELECT id, title, COALESCE(body,''), COALESCE(status,'open'), created_at
 FROM proposals
-ORDER BY id DESC`)
-	if err != nil {
-		return nil, err
-	}
+ORDER BY id DESC`
+    args := []any{}
+    if limit > 0 {
+        query += ` LIMIT $1`
+        args = append(args, limit)
+        if offset > 0 {
+            query += ` OFFSET $2`
+            args = append(args, offset)
+        }
+    } else if offset > 0 {
+        // OFFSET without LIMIT is allowed but unusual; include to be permissive
+        query += ` OFFSET $1`
+        args = append(args, offset)
+    }
+    rows, err := r.Pool.Query(ctx, query, args...)
+    if err != nil {
+        return nil, err
+    }
 	defer rows.Close()
 
 	var out []Proposal

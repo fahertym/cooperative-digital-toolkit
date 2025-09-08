@@ -15,27 +15,48 @@ type Handlers struct {
 }
 
 func (h Handlers) List(w http.ResponseWriter, r *http.Request) {
-	filters := &ListFilters{}
+    filters := &ListFilters{}
     if t := r.URL.Query().Get("type"); t != "" {
         filters.Type = t
     }
-	if mid := r.URL.Query().Get("member_id"); mid != "" {
-		v, err := strconv.ParseInt(mid, 10, 32)
+    if mid := r.URL.Query().Get("member_id"); mid != "" {
+        v, err := strconv.ParseInt(mid, 10, 32)
         if err != nil {
             httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid member_id")
             return
         }
-		v32 := int32(v)
-		filters.MemberID = &v32
-	}
+        v32 := int32(v)
+        filters.MemberID = &v32
+    }
+    if ls := r.URL.Query().Get("limit"); ls != "" {
+        if v, err := strconv.Atoi(ls); err == nil && v > 0 {
+            if v > 200 {
+                v = 200
+            }
+            filters.Limit = v
+        } else if err != nil {
+            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid limit")
+            return
+        }
+    }
+    if os := r.URL.Query().Get("offset"); os != "" {
+        if v, err := strconv.Atoi(os); err == nil && v >= 0 {
+            filters.Offset = v
+        } else if err != nil {
+            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid offset")
+            return
+        }
+    }
 
-	items, err := h.Repo.List(r.Context(), filters)
+    items, err := h.Repo.List(r.Context(), filters)
     if err != nil {
         httpmw.WriteJSONError(w, http.StatusInternalServerError, "failed to list")
         return
     }
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(items)
+    if filters.Limit > 0 { w.Header().Set("X-Limit", strconv.Itoa(filters.Limit)) }
+    if filters.Offset > 0 { w.Header().Set("X-Offset", strconv.Itoa(filters.Offset)) }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(items)
 }
 
 func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {

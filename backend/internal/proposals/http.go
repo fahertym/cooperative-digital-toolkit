@@ -17,13 +17,33 @@ type Handlers struct {
 }
 
 func (h Handlers) List(w http.ResponseWriter, r *http.Request) {
-	items, err := h.Repo.List(r.Context())
-	if err != nil {
-		http.Error(w, "failed to list", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(items)
+    var limit, offset int
+    if ls := r.URL.Query().Get("limit"); ls != "" {
+        if v, err := strconv.Atoi(ls); err == nil && v > 0 {
+            if v > 200 { v = 200 }
+            limit = v
+        } else if err != nil {
+            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid limit")
+            return
+        }
+    }
+    if os := r.URL.Query().Get("offset"); os != "" {
+        if v, err := strconv.Atoi(os); err == nil && v >= 0 {
+            offset = v
+        } else if err != nil {
+            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid offset")
+            return
+        }
+    }
+    items, err := h.Repo.List(r.Context(), limit, offset)
+    if err != nil {
+        http.Error(w, "failed to list", http.StatusInternalServerError)
+        return
+    }
+    if limit > 0 { w.Header().Set("X-Limit", strconv.Itoa(limit)) }
+    if offset > 0 { w.Header().Set("X-Offset", strconv.Itoa(offset)) }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(items)
 }
 
 func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +114,7 @@ func (h Handlers) Close(w http.ResponseWriter, r *http.Request) {
 
 // ExportCSV streams all proposals as CSV
 func (h Handlers) ExportCSV(w http.ResponseWriter, r *http.Request) {
-	items, err := h.Repo.List(r.Context())
+    items, err := h.Repo.List(r.Context(), 0, 0)
 	if err != nil {
 		http.Error(w, "failed to list", http.StatusInternalServerError)
 		return

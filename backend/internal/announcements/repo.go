@@ -28,51 +28,65 @@ func NewPgRepo(pool *pgxpool.Pool) *PgRepo {
 }
 
 func (r *PgRepo) List(ctx context.Context, memberID *int32, filters *ListFilters) ([]AnnouncementWithReadStatus, error) {
-	query := `
+    query := `
 SELECT a.id, a.title, a.body, a.author_id, COALESCE(a.priority,'normal'), a.created_at, a.updated_at,
        (ar.read_at IS NOT NULL) AS is_read, ar.read_at
 FROM announcements a`
-	args := []any{}
-	if memberID != nil {
-		query += ` LEFT JOIN announcement_reads ar ON ar.announcement_id=a.id AND ar.member_id=$1`
-		args = append(args, *memberID)
-	} else {
-		query += ` LEFT JOIN LATERAL (SELECT NULL::TIMESTAMPTZ AS read_at) ar ON true`
-	}
+    args := []any{}
+    if memberID != nil {
+        query += ` LEFT JOIN announcement_reads ar ON ar.announcement_id=a.id AND ar.member_id=$1`
+        args = append(args, *memberID)
+    } else {
+        query += ` LEFT JOIN LATERAL (SELECT NULL::TIMESTAMPTZ AS read_at) ar ON true`
+    }
 
-	where := ""
-	argPos := len(args)
-	if filters != nil {
-		if filters.Priority != "" {
-			if where == "" {
-				where = " WHERE"
-			} else {
-				where += " AND"
-			}
-			argPos++
-			where += " a.priority=$" + itoa(argPos)
-			args = append(args, filters.Priority)
-		}
-		if filters.AuthorID != nil {
-			if where == "" {
-				where = " WHERE"
-			} else {
-				where += " AND"
-			}
-			argPos++
-			where += " a.author_id=$" + itoa(argPos)
-			args = append(args, *filters.AuthorID)
-		}
-		if filters.OnlyUnread && memberID != nil {
-			if where == "" {
-				where = " WHERE"
-			} else {
-				where += " AND"
-			}
-			where += " ar.read_at IS NULL"
-		}
-	}
-	query += where + " ORDER BY a.id DESC"
+    where := ""
+    argPos := len(args)
+    if filters != nil {
+        if filters.Priority != "" {
+            if where == "" {
+                where = " WHERE"
+            } else {
+                where += " AND"
+            }
+            argPos++
+            where += " a.priority=$" + itoa(argPos)
+            args = append(args, filters.Priority)
+        }
+        if filters.AuthorID != nil {
+            if where == "" {
+                where = " WHERE"
+            } else {
+                where += " AND"
+            }
+            argPos++
+            where += " a.author_id=$" + itoa(argPos)
+            args = append(args, *filters.AuthorID)
+        }
+        if filters.OnlyUnread && memberID != nil {
+            if where == "" {
+                where = " WHERE"
+            } else {
+                where += " AND"
+            }
+            where += " ar.read_at IS NULL"
+        }
+    }
+    query += where + " ORDER BY a.id DESC"
+
+    // Pagination
+    if filters != nil {
+        if filters.Limit > 0 {
+            argPos++
+            query += " LIMIT $" + itoa(argPos)
+            args = append(args, filters.Limit)
+        }
+        if filters.Offset > 0 {
+            argPos++
+            query += " OFFSET $" + itoa(argPos)
+            args = append(args, filters.Offset)
+        }
+    }
 
 	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {

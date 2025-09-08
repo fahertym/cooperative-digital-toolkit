@@ -16,15 +16,23 @@ import (
 // ---- Mock Repo ----
 
 type mockRepo struct {
-	items  []Proposal
-	nextID int32
+    items  []Proposal
+    nextID int32
 }
 
-func (m *mockRepo) List(_ context.Context) ([]Proposal, error) {
-	// Return a copy to avoid mutation by callers
-	out := make([]Proposal, len(m.items))
-	copy(out, m.items)
-	return out, nil
+func (m *mockRepo) List(_ context.Context, limit, offset int) ([]Proposal, error) {
+    // Return a copy to avoid mutation by callers
+    out := make([]Proposal, len(m.items))
+    copy(out, m.items)
+    // Apply simple pagination for tests
+    if offset > len(out) {
+        return []Proposal{}, nil
+    }
+    out = out[offset:]
+    if limit > 0 && limit < len(out) {
+        out = out[:limit]
+    }
+    return out, nil
 }
 
 func (m *mockRepo) Get(_ context.Context, id int32) (Proposal, error) {

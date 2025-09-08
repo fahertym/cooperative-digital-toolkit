@@ -41,13 +41,34 @@ func (h Handlers) List(w http.ResponseWriter, r *http.Request) {
 		filters.OnlyUnread = true
 	}
 
-	items, err := h.Repo.List(r.Context(), memberID, filters)
+	// Optional pagination
+	if ls := r.URL.Query().Get("limit"); ls != "" {
+		if v, err := strconv.Atoi(ls); err == nil && v > 0 {
+			if v > 200 { v = 200 }
+			filters.Limit = v
+		} else if err != nil {
+			httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid limit")
+			return
+		}
+	}
+	if os := r.URL.Query().Get("offset"); os != "" {
+		if v, err := strconv.Atoi(os); err == nil && v >= 0 {
+			filters.Offset = v
+		} else if err != nil {
+			httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid offset")
+			return
+		}
+	}
+
+    items, err := h.Repo.List(r.Context(), memberID, filters)
     if err != nil {
         httpmw.WriteJSONError(w, http.StatusInternalServerError, "failed to list")
         return
     }
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(items)
+    if filters.Limit > 0 { w.Header().Set("X-Limit", strconv.Itoa(filters.Limit)) }
+    if filters.Offset > 0 { w.Header().Set("X-Offset", strconv.Itoa(filters.Offset)) }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(items)
 }
 
 func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {

@@ -35,6 +35,10 @@ Body: `ok`
 ## Proposals
 
 ### GET /api/proposals → 200
+Query params:
+- `limit` (int, optional, max 200)
+- `offset` (int, optional)
+Response headers (when provided): `X-Limit`, `X-Offset`
 ```json
 [
   {"id":1,"title":"Bylaws update","body":"","status":"open","created_at":"2025-01-08T12:00:00Z"}
@@ -53,6 +57,7 @@ Body: `{ "title": "...", "body": "..." }`
 Returns closed proposal object.
 
 ### GET /api/proposals/.csv → 200 text/csv
+Note: CSV export returns all rows and ignores pagination parameters.
 
 ---
 
@@ -70,6 +75,10 @@ Body: `{ "choice": "for" | "against" | "abstain", "notes": "..." }`
 Body: `{ "choice": "for" | "against" | "abstain", "notes": "..." }`
 
 ### GET /api/proposals/{id}/votes → 200
+Query params:
+- `limit` (int, optional, max 200)
+- `offset` (int, optional)
+Response headers (when provided): `X-Limit`, `X-Offset`
 ```json
 [{"id":1,"proposal_id":1,"member_id":1,"choice":"for","notes":"","created_at":"2025-01-08T12:01:00Z"}]
 ```
@@ -92,6 +101,10 @@ Body: `{ "choice": "for" | "against" | "abstain", "notes": "..." }`
 ## Announcements
 
 ### GET /api/announcements → 200
+Query params:
+- `limit` (int, optional, max 200)
+- `offset` (int, optional)
+Response headers (when provided): `X-Limit`, `X-Offset`
 ```json
 [
   {"id":1,"title":"Welcome","priority":"normal","created_at":"2025-01-08T12:00:00Z","is_read":false}
@@ -131,6 +144,12 @@ Headers: `X-User-Id` required, `X-Idempotency-Key` optional
 Errors: `400` invalid input, `401` missing/invalid auth
 
 ### GET /api/ledger → 200
+Query params:
+- `type` (string, optional)
+- `member_id` (int, optional)
+- `limit` (int, optional, max 200)
+- `offset` (int, optional)
+Response headers (when provided): `X-Limit`, `X-Offset`
 
 ### GET /api/ledger/{id} → 200 | 400 | 404
 

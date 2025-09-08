@@ -28,37 +28,51 @@ func NewPgRepo(pool *pgxpool.Pool) *PgRepo {
 }
 
 func (r *PgRepo) List(ctx context.Context, filters *ListFilters) ([]LedgerEntry, error) {
-	query := `
+    query := `
 SELECT id, type, amount, description, member_id, COALESCE(notes,''), created_at
 FROM ledger_entries`
-	args := []any{}
-	where := ""
-	if filters != nil {
-		argPos := 0
-		if filters.Type != "" {
-			argPos++
-			if where == "" {
-				where = " WHERE"
-			} else {
-				where += " AND"
-			}
-			where += " type=$" + itoa(argPos)
-			args = append(args, filters.Type)
-		}
-		if filters.MemberID != nil {
-			argPos++
-			if where == "" {
-				where = " WHERE"
-			} else {
-				where += " AND"
-			}
-			where += " member_id=$" + itoa(argPos)
-			args = append(args, *filters.MemberID)
-		}
-	}
-	query += where + " ORDER BY id DESC"
+    args := []any{}
+    where := ""
+    if filters != nil {
+        argPos := 0
+        if filters.Type != "" {
+            argPos++
+            if where == "" {
+                where = " WHERE"
+            } else {
+                where += " AND"
+            }
+            where += " type=$" + itoa(argPos)
+            args = append(args, filters.Type)
+        }
+        if filters.MemberID != nil {
+            argPos++
+            if where == "" {
+                where = " WHERE"
+            } else {
+                where += " AND"
+            }
+            where += " member_id=$" + itoa(argPos)
+            args = append(args, *filters.MemberID)
+        }
+        query += where + " ORDER BY id DESC"
 
-	rows, err := r.Pool.Query(ctx, query, args...)
+        // Pagination
+        if filters.Limit > 0 {
+            argPos++
+            query += " LIMIT $" + itoa(argPos)
+            args = append(args, filters.Limit)
+        }
+        if filters.Offset > 0 {
+            argPos++
+            query += " OFFSET $" + itoa(argPos)
+            args = append(args, filters.Offset)
+        }
+    } else {
+        query += " ORDER BY id DESC"
+    }
+
+    rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

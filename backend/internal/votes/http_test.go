@@ -16,9 +16,9 @@ import (
 // ---- Mock Repo ----
 
 type mockRepo struct {
-	votes     []Vote
-	nextID    int32
-	statusFor map[int32]string // proposal_id -> status ("open"/"closed")
+    votes     []Vote
+    nextID    int32
+    statusFor map[int32]string // proposal_id -> status ("open"/"closed")
 }
 
 func (m *mockRepo) ensureInit() {
@@ -27,14 +27,21 @@ func (m *mockRepo) ensureInit() {
 	}
 }
 
-func (m *mockRepo) List(_ context.Context, proposalID int32) ([]Vote, error) {
-	var out []Vote
-	for _, v := range m.votes {
-		if v.ProposalID == proposalID {
-			out = append(out, v)
-		}
-	}
-	return out, nil
+func (m *mockRepo) List(_ context.Context, proposalID int32, limit, offset int) ([]Vote, error) {
+    var out []Vote
+    for _, v := range m.votes {
+        if v.ProposalID == proposalID {
+            out = append(out, v)
+        }
+    }
+    if offset > len(out) {
+        return []Vote{}, nil
+    }
+    out = out[offset:]
+    if limit > 0 && limit < len(out) {
+        out = out[:limit]
+    }
+    return out, nil
 }
 
 func (m *mockRepo) Get(_ context.Context, proposalID, memberID int32) (Vote, error) {

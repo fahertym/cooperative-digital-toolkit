@@ -29,7 +29,9 @@ type AnnouncementWithReadStatus struct {
 
 // ListFilters constrains which announcements are returned.
 type ListFilters struct {
-	Priority   string
-	AuthorID   *int32
-	OnlyUnread bool
+    Priority   string
+    AuthorID   *int32
+    OnlyUnread bool
+    Limit      int
+    Offset     int
 }

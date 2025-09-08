@@ -14,7 +14,9 @@ type LedgerEntry struct {
 
 // ListFilters holds optional constraints for listing entries.
 type ListFilters struct {
-	Type     string
-	MemberID *int32
-	// FromDate, ToDate omitted for now in implementation
+    Type     string
+    MemberID *int32
+    // FromDate, ToDate omitted for now in implementation
+    Limit  int
+    Offset int
 }
