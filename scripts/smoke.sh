@@ -49,6 +49,31 @@ echo "== Ledger Smoke: CSV header =="
 curl -fsS "$BASE/api/ledger/.csv" | head -n 1
 echo
 
+echo "== Announcements Smoke: List (JSON array) =="
+curl -fsS "$BASE/api/announcements" | jq 'length' || (echo "announcements list failed" && exit 1)
+echo
+
+echo "== Announcements Smoke: Create =="
+ANNOUNCEMENT_ID=$(curl -fsS -X POST "$BASE/api/announcements" \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Smoke test announcement","body":"This is a smoke test announcement","priority":"normal"}' | jq -r '.id')
+echo "Created announcement id=$ANNOUNCEMENT_ID"
+echo
+
+echo "== Announcements Smoke: Get =="
+curl -fsS "$BASE/api/announcements/$ANNOUNCEMENT_ID" | jq '{id,title,priority,is_read}'
+echo
+
+echo "== Announcements Smoke: Mark as Read =="
+curl -fsS -X POST "$BASE/api/announcements/$ANNOUNCEMENT_ID/read" \
+  -H 'Content-Type: application/json' \
+  -d '{"member_id":1}' | jq '{id,is_read}'
+echo
+
+echo "== Announcements Smoke: Unread Count =="
+curl -fsS "$BASE/api/announcements/unread?member_id=1" | jq '{member_id,unread_count}'
+echo
+
 echo "Smoke OK ✅"
 
 

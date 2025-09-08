@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 
+	"coop.tools/backend/internal/announcements"
 	"coop.tools/backend/internal/db"
 	"coop.tools/backend/internal/ledger"
 	"coop.tools/backend/internal/proposals"
@@ -32,6 +33,9 @@ func main() {
 	}
 	if err := ledger.ApplyMigrations(ctx, store.Pool); err != nil {
 		log.Fatal("ledger migrations:", err)
+	}
+	if err := announcements.ApplyMigrations(ctx, store.Pool); err != nil {
+		log.Fatal("announcements migrations:", err)
 	}
 
 	corsOrigin := db.Env("CORS_ORIGIN", "http://localhost:5173")
@@ -62,6 +66,11 @@ func main() {
 		ledgerRepo := ledger.NewPgRepo(store.Pool)
 		ledgerHandlers := ledger.Handlers{Repo: ledgerRepo}
 		ledger.Mount(api, ledgerHandlers)
+
+		// Announcements
+		announcementsRepo := announcements.NewPgRepo(store.Pool)
+		announcementsHandlers := announcements.Handlers{Repo: announcementsRepo}
+		announcements.Mount(api, announcementsHandlers)
 	})
 
 	addr := ":" + db.Env("PORT", "8080")
