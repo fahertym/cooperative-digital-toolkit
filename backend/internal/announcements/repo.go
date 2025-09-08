@@ -82,18 +82,3 @@ RETURNING id, title, body, author_id, COALESCE(priority,'normal'), created_at, u
 	a.UpdatedAt = updatedAt.Time
 	return a, nil
 }
-
-// ApplyMigrations creates the announcements table and any necessary schema updates.
-func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
-	_, err := pool.Exec(ctx, `
-CREATE TABLE IF NOT EXISTS announcements (
-  id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  body TEXT NOT NULL,
-  author_id INTEGER NOT NULL,
-  priority TEXT DEFAULT 'normal',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);`)
-	return err
-}

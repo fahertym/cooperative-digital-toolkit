@@ -2,7 +2,6 @@ package announcements
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
 

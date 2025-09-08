@@ -92,18 +92,3 @@ RETURNING id, type, amount, description, member_id, COALESCE(notes,''), created_
 	}
 	return e, nil
 }
-
-// ApplyMigrations creates the ledger_entries table and any necessary schema updates.
-func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
-	_, err := pool.Exec(ctx, `
-CREATE TABLE IF NOT EXISTS ledger_entries (
-  id SERIAL PRIMARY KEY,
-  type TEXT NOT NULL,
-  amount DECIMAL(10,2) NOT NULL,
-  description TEXT NOT NULL,
-  member_id INTEGER,
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);`)
-	return err
-}
