@@ -107,20 +107,30 @@ func (r *PgRepo) Create(ctx context.Context, entryType, description string, amou
 	}
 
 	if idempotencyKey != "" && memberIDParam.Valid {
-		// Upsert on (member_id, idempotency_key)
+		// Try insert; if duplicate, select existing by (member_id, idempotency_key)
 		err := r.Pool.QueryRow(ctx, `
 INSERT INTO ledger_entries (type, amount, description, member_id, notes, idempotency_key)
 VALUES ($1,$2,$3,$4,$5,$6)
-ON CONFLICT (member_id, idempotency_key)
-DO UPDATE SET 
-  type=EXCLUDED.type,
-  amount=EXCLUDED.amount,
-  description=EXCLUDED.description,
-  notes=EXCLUDED.notes
 RETURNING id, type, amount, description, member_id, COALESCE(notes,''), created_at
 `, entryType, amount, description, memberIDParam, notes, idempotencyKey).Scan(&e.ID, &e.Type, &e.Amount, &e.Description, &memberIDParam, &e.Notes, &e.CreatedAt)
 		if err != nil {
-			return LedgerEntry{}, err
+			// On any insert error, attempt to fetch existing idempotent record
+			var existing LedgerEntry
+			var mid pgtype.Int4
+			var ts pgtype.Timestamptz
+			err2 := r.Pool.QueryRow(ctx, `
+SELECT id, type, amount, description, member_id, COALESCE(notes,''), created_at
+FROM ledger_entries
+WHERE member_id=$1 AND idempotency_key=$2
+LIMIT 1`, memberIDParam, idempotencyKey).Scan(&existing.ID, &existing.Type, &existing.Amount, &existing.Description, &mid, &existing.Notes, &ts)
+			if err2 != nil {
+				return LedgerEntry{}, err
+			}
+			if mid.Valid {
+				existing.MemberID = &mid.Int32
+			}
+			existing.CreatedAt = ts.Time
+			return existing, nil
 		}
 		if memberIDParam.Valid {
 			e.MemberID = &memberIDParam.Int32
