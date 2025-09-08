@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"coop.tools/backend/internal/httpmw"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -129,10 +130,14 @@ func (m *mockRepo) GetTally(_ context.Context, proposalID int32) (Tally, error) 
 // ---- Test Router Setup ----
 
 func testRouter(repo Repo) http.Handler {
-	r := chi.NewRouter()
-	h := Handlers{Repo: repo}
-	r.Route("/api", func(api chi.Router) { Mount(api, h) })
-	return r
+    r := chi.NewRouter()
+    r.Use(httpmw.WithAuth(func(ctx context.Context, id int64) (httpmw.Principal, bool, error) {
+        if id <= 0 { return httpmw.Principal{}, false, nil }
+        return httpmw.Principal{MemberID: id, Role: "member"}, true, nil
+    }))
+    h := Handlers{Repo: repo}
+    r.Route("/api", func(api chi.Router) { Mount(api, h) })
+    return r
 }
 
 // ---- Tests ----

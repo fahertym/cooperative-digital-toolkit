@@ -2,10 +2,19 @@
 set -euo pipefail
 
 BASE=${BASE:-http://localhost:8080}
-USER=${USER_ID:-1}
+USER=${USER_ID:-}
 
 echo "== Smoke: Health =="
 curl -fsS "$BASE/healthz" && echo "ok" || (echo "health failed" && exit 1)
+echo
+
+echo "== Auth: Create admin member =="
+if [ -z "$USER" ]; then
+  USER=$(curl -fsS -X POST "$BASE/api/members" \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"admin@example.com","display_name":"Admin","role":"admin"}' | jq -r '.id')
+fi
+echo "Using member id=$USER"
 echo
 
 echo "== Smoke: List (JSON array) =="
@@ -73,8 +82,9 @@ echo "== Announcements Smoke: List (JSON array) =="
 curl -fsS "$BASE/api/announcements" | jq 'length' || (echo "announcements list failed" && exit 1)
 echo
 
-echo "== Announcements Smoke: Create =="
+echo "== Announcements Smoke: Create (admin required) =="
 ANNOUNCEMENT_ID=$(curl -fsS -X POST "$BASE/api/announcements" \
+  -H "X-User-Id: $USER" \
   -H 'Content-Type: application/json' \
   -d '{"title":"Smoke test announcement","body":"This is a smoke test announcement","priority":"normal"}' | jq -r '.id')
 echo "Created announcement id=$ANNOUNCEMENT_ID"
@@ -107,4 +117,3 @@ curl -fsS "$BASE/api/proposals/$PROP_ID/votes/tally" | jq '{proposal_id,results,
 echo
 
 echo "Smoke OK ✅"
-

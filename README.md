@@ -14,6 +14,8 @@ make dev   # run backend + frontend in watch mode
 make test  # run tests
 ```
 
+Temporary auth: set `X-User-Id` header to a valid member id for write endpoints. Create a member via `POST /api/members` (role: `admin` or `member`).
+
 ## Docs
 See `/docs` for strategy, product, and technical specifications.
 

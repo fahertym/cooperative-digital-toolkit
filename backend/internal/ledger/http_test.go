@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"coop.tools/backend/internal/httpmw"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -77,10 +78,14 @@ func (m *mockRepo) Create(_ context.Context, entryType, description string, amou
 // ---- Helper functions ----
 
 func setupRouter(repo Repo) *chi.Mux {
-	r := chi.NewRouter()
-	handlers := Handlers{Repo: repo}
-	Mount(r, handlers)
-	return r
+    r := chi.NewRouter()
+    r.Use(httpmw.WithAuth(func(ctx context.Context, id int64) (httpmw.Principal, bool, error) {
+        if id <= 0 { return httpmw.Principal{}, false, nil }
+        return httpmw.Principal{MemberID: id, Role: "member"}, true, nil
+    }))
+    handlers := Handlers{Repo: repo}
+    Mount(r, handlers)
+    return r
 }
 
 // ---- Tests ----

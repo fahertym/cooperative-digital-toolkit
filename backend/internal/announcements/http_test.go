@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"coop.tools/backend/internal/httpmw"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -152,10 +153,15 @@ func (m *mockRepo) GetUnreadCount(ctx context.Context, memberID int32) (int, err
 // ---- Helper functions ----
 
 func setupRouter(repo Repo) *chi.Mux {
-	r := chi.NewRouter()
-	handlers := Handlers{Repo: repo}
-	Mount(r, handlers)
-	return r
+    r := chi.NewRouter()
+    // Attach auth middleware for tests: any X-User-Id maps to admin
+    r.Use(httpmw.WithAuth(func(ctx context.Context, id int64) (httpmw.Principal, bool, error) {
+        if id <= 0 { return httpmw.Principal{}, false, nil }
+        return httpmw.Principal{MemberID: id, Role: "admin"}, true, nil
+    }))
+    handlers := Handlers{Repo: repo}
+    Mount(r, handlers)
+    return r
 }
 
 // ---- Tests ----
@@ -242,12 +248,12 @@ func TestHandlers_Create(t *testing.T) {
 	repo := &mockRepo{}
 	r := setupRouter(repo)
 
-	tests := []struct {
-		name           string
-		payload        string
-		expectedStatus int
-		checkResponse  func(t *testing.T, body []byte)
-	}{
+    tests := []struct {
+        name           string
+        payload        string
+        expectedStatus int
+        checkResponse  func(t *testing.T, body []byte)
+    }{
 		{
 			name:           "valid normal announcement",
 			payload:        `{"title":"Test Announcement","body":"This is a test announcement","priority":"normal"}`,
@@ -318,12 +324,14 @@ func TestHandlers_Create(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest("POST", "/announcements", strings.NewReader(tt.payload))
-			req.Header.Set("Content-Type", "application/json")
-			rr := httptest.NewRecorder()
-			r.ServeHTTP(rr, req)
+        for _, tt := range tests {
+            t.Run(tt.name, func(t *testing.T) {
+                req := httptest.NewRequest("POST", "/announcements", strings.NewReader(tt.payload))
+                req.Header.Set("Content-Type", "application/json")
+                // Auth as admin for create
+                req.Header.Set("X-User-Id", "1")
+                rr := httptest.NewRecorder()
+                r.ServeHTTP(rr, req)
 
 			if rr.Code != tt.expectedStatus {
 				t.Errorf("expected status %d, got %d", tt.expectedStatus, rr.Code)

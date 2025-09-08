@@ -12,6 +12,8 @@ import (
 
 	"coop.tools/backend/internal/announcements"
 	"coop.tools/backend/internal/db"
+	"coop.tools/backend/internal/httpmw"
+	"coop.tools/backend/internal/members"
 	"coop.tools/backend/internal/ledger"
 	"coop.tools/backend/internal/proposals"
 	"coop.tools/backend/internal/votes"
@@ -41,6 +43,9 @@ func main() {
 	if err := votes.ApplyMigrations(ctx, store.Pool); err != nil {
 		log.Fatal("votes migrations:", err)
 	}
+	if err := members.ApplyMigrations(ctx, store.Pool); err != nil {
+		log.Fatal("members migrations:", err)
+	}
 
 	corsOrigin := db.Env("CORS_ORIGIN", "http://localhost:5173")
 
@@ -61,6 +66,16 @@ func main() {
 
 	// API
 	r.Route("/api", func(api chi.Router) {
+		// Global auth: attach Principal from X-User-Id (guest if missing)
+		memRepo := members.NewPgRepo(store.Pool)
+		api.Use(httpmw.WithAuth(func(c context.Context, id int64) (httpmw.Principal, bool, error) {
+			m, err := memRepo.GetByID(c, id)
+			if err != nil {
+				if err == members.ErrNotFound { return httpmw.Principal{}, false, nil }
+				return httpmw.Principal{}, false, err
+			}
+			return httpmw.Principal{MemberID: m.ID, Role: m.Role, Email: m.Email, Name: m.DisplayName}, true, nil
+		}))
 		// Proposals
 		propRepo := proposals.NewPgRepo(store.Pool)
 		propHandlers := proposals.Handlers{Repo: propRepo}
@@ -75,6 +90,10 @@ func main() {
 		announcementsRepo := announcements.NewPgRepo(store.Pool)
 		announcementsHandlers := announcements.Handlers{Repo: announcementsRepo}
 		announcements.Mount(api, announcementsHandlers)
+
+		// Members
+		membersHandlers := members.Handlers{Repo: memRepo}
+		members.Mount(api, membersHandlers)
 
 		// Votes
 		votesRepo := votes.NewPgRepo(store.Pool)
