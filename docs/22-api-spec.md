@@ -39,6 +39,12 @@ Query params:
 - `limit` (int, optional, max 200)
 - `offset` (int, optional)
 Response headers (when provided): `X-Limit`, `X-Offset`
+Example (paginated):
+```
+GET /api/proposals?limit=20&offset=20
+X-Limit: 20
+X-Offset: 20
+```
 ```json
 [
   {"id":1,"title":"Bylaws update","body":"","status":"open","created_at":"2025-01-08T12:00:00Z"}
@@ -79,6 +85,11 @@ Query params:
 - `limit` (int, optional, max 200)
 - `offset` (int, optional)
 Response headers (when provided): `X-Limit`, `X-Offset`
+Example (paginated):
+```
+GET /api/proposals/123/votes?limit=50
+X-Limit: 50
+```
 ```json
 [{"id":1,"proposal_id":1,"member_id":1,"choice":"for","notes":"","created_at":"2025-01-08T12:01:00Z"}]
 ```
@@ -105,6 +116,11 @@ Query params:
 - `limit` (int, optional, max 200)
 - `offset` (int, optional)
 Response headers (when provided): `X-Limit`, `X-Offset`
+Example (paginated):
+```
+GET /api/announcements?limit=10
+X-Limit: 10
+```
 ```json
 [
   {"id":1,"title":"Welcome","priority":"normal","created_at":"2025-01-08T12:00:00Z","is_read":false}
@@ -150,6 +166,12 @@ Query params:
 - `limit` (int, optional, max 200)
 - `offset` (int, optional)
 Response headers (when provided): `X-Limit`, `X-Offset`
+Example (paginated + filter):
+```
+GET /api/ledger?type=dues&limit=25&offset=25
+X-Limit: 25
+X-Offset: 25
+```
 
 ### GET /api/ledger/{id} → 200 | 400 | 404
 
@@ -176,6 +198,40 @@ All error responses from JSON endpoints use this shape. Examples:
 - `400` invalid path param: `{ "error": "invalid id" }`
 - `401` missing auth: `{ "error": "unauthorized" }`
 - `404` missing resource: `{ "error": "not found" }`
+
+### Error Examples (curl)
+
+Invalid ID (400):
+```
+curl -i http://localhost:8080/api/proposals/abc
+
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{"error":"invalid id"}
+```
+
+Unauthorized (401) on protected route (missing `X-User-Id`):
+```
+curl -i -X POST http://localhost:8080/api/ledger \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"dues","amount":10.00,"description":"test"}'
+
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+
+{"error":"unauthorized"}
+```
+
+Not Found (404):
+```
+curl -i http://localhost:8080/api/announcements/999999
+
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{"error":"not found"}
+```
 
 Idempotency behavior:
 - POST `/api/ledger` returns `201 Created` on first create and `200 OK` on idempotent replay for the same user and `X-Idempotency-Key`. Response body is the same resource JSON.

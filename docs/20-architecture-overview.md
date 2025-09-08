@@ -6,7 +6,7 @@
 - Everything critical is event-logged for audits and democratic accountability.
 
 ## Components
-- **Backend:** Go 1.22, chi router, pgx pool, CORS.
+- **Backend:** Go 1.23 (toolchain 1.24.x), chi router, pgx pool, CORS.
 - **Frontend:** Svelte + Vite (SvelteKit upgrade likely).
 - **Database:** PostgreSQL 16 (CockroachDB path for federation).
 - **Automations:** n8n; **Ingest:** Airbyte.
@@ -34,6 +34,12 @@
 - For endpoints that support idempotency (ledger today), requests include `X-Idempotency-Key`
 - The server ensures one logical create per `(member_id, key)`
 - Policy: On conflict, return the original resource with success
+  - Implementation detail: returns `201 Created` on first create and `200 OK` on idempotent replay (same body)
+
+## API Conventions
+- JSON error envelope for failures: `{ "error": "message" }`
+- Optional pagination for list endpoints: `limit` (max 200) and `offset`
+  - Responses include headers `X-Limit` and `X-Offset` when provided
 
 ### Conflicts
 - Duplicate votes are prevented by a DB uniqueness constraint on `(proposal_id, member_id)`

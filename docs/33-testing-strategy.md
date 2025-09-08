@@ -4,6 +4,7 @@
 - **Unit tests**: handlers with mocked Repo interfaces.
 - **Integration tests**: spin ephemeral Postgres (Docker) and test repo.
 - **Table-driven cases**: clear inputs/outputs; golden files for JSON where helpful.
+- **Smoke**: CI spins Postgres + server, then exercises core flows, CSV exports, idempotent replay, and checks JSON error envelope shape.
 
 ## Frontend
 - **Vitest**: component logic, stores.
