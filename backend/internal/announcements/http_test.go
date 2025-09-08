@@ -56,12 +56,12 @@ func (m *mockRepo) List(ctx context.Context, memberID *int32, filters *ListFilte
 					}
 				}
 			}
-			
+
 			// Apply unread filter
 			if filters != nil && filters.OnlyUnread && item.IsRead {
 				continue
 			}
-			
+
 			out = append(out, item)
 		}
 	}
@@ -98,7 +98,7 @@ func (m *mockRepo) Create(ctx context.Context, title, body string, authorID *int
 	if m.nextID == 0 {
 		m.nextID = 1
 	}
-	
+
 	now := time.Now()
 	announcement := Announcement{
 		ID:        m.nextID,
@@ -121,7 +121,7 @@ func (m *mockRepo) MarkAsRead(ctx context.Context, announcementID, memberID int3
 			return nil // Already read, no error
 		}
 	}
-	
+
 	// Add read record
 	read := AnnouncementRead{
 		AnnouncementID: announcementID,
