@@ -1,3 +1,15 @@
+.PHONY: run test smoke
+DB ?= postgres://coop:coop@localhost:5432/coopdb?sslmode=disable
+PORT ?= 8080
+
+run:
+	cd backend && DATABASE_URL='$(DB)' PORT='$(PORT)' go run ./cmd/server
+
+test:
+	cd backend && go test ./...
+
+smoke:
+	BASE="http://localhost:$(PORT)" ./scripts/smoke.sh
 
 .SILENT: ;         # no noise
 .DEFAULT_GOAL := help

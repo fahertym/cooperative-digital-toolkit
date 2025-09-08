@@ -226,3 +226,18 @@ func TestVotes_TallyQuorum(t *testing.T) {
 		t.Fatalf("unexpected tally: %+v", tally)
 	}
 }
+
+func TestVotes_UnauthorizedMissingHeader(t *testing.T) {
+	repo := &mockRepo{}
+	r := testRouter(repo)
+
+	// Missing X-User-Id should yield 401
+	payload := `{"choice":"for"}`
+	req := httptest.NewRequest("POST", "/api/proposals/1/votes", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("unauth: want 401 got %d", rr.Code)
+	}
+}
