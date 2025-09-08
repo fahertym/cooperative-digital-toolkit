@@ -45,13 +45,13 @@ func main() {
 	corsOrigin := db.Env("CORS_ORIGIN", "http://localhost:5173")
 
 	r := chi.NewRouter()
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{corsOrigin},
-		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Content-Type", "X-User-Id", "X-Idempotency-Key"},
-		AllowCredentials: false,
-		MaxAge:           300,
-	}))
+    r.Use(cors.Handler(cors.Options{
+        AllowedOrigins:   []string{corsOrigin},
+        AllowedMethods:   []string{"GET", "POST", "PUT", "OPTIONS"},
+        AllowedHeaders:   []string{"Accept", "Content-Type", "X-User-Id", "X-Idempotency-Key"},
+        AllowCredentials: false,
+        MaxAge:           300,
+    }))
 
 	// Health
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {

@@ -15,8 +15,8 @@ import (
 // ---- Mock Repo ----
 
 type mockRepo struct {
-	entries []LedgerEntry
-	nextID  int32
+    entries []LedgerEntry
+    nextID  int32
 }
 
 func (m *mockRepo) List(_ context.Context, filters *ListFilters) ([]LedgerEntry, error) {
@@ -56,22 +56,22 @@ func (m *mockRepo) Get(_ context.Context, id int32) (LedgerEntry, error) {
 	return LedgerEntry{}, ErrNotFound
 }
 
-func (m *mockRepo) Create(_ context.Context, entryType, description string, amount float64, memberID *int32, notes string, idempotencyKey string) (LedgerEntry, error) {
-	if m.nextID == 0 {
-		m.nextID = 1
-	}
-	entry := LedgerEntry{
-		ID:          m.nextID,
-		Type:        entryType,
-		Amount:      amount,
-		Description: description,
-		MemberID:    memberID,
-		Notes:       notes,
-		CreatedAt:   time.Now(),
-	}
-	m.nextID++
-	m.entries = append(m.entries, entry)
-	return entry, nil
+func (m *mockRepo) Create(_ context.Context, entryType, description string, amount float64, memberID *int32, notes string, idempotencyKey string) (LedgerEntry, bool, error) {
+    if m.nextID == 0 {
+        m.nextID = 1
+    }
+    entry := LedgerEntry{
+        ID:          m.nextID,
+        Type:        entryType,
+        Amount:      amount,
+        Description: description,
+        MemberID:    memberID,
+        Notes:       notes,
+        CreatedAt:   time.Now(),
+    }
+    m.nextID++
+    m.entries = append(m.entries, entry)
+    return entry, false, nil
 }
 
 // ---- Helper functions ----

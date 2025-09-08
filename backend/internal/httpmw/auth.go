@@ -1,9 +1,9 @@
 package httpmw
 
 import (
-	"context"
-	"net/http"
-	"strconv"
+    "context"
+    "net/http"
+    "strconv"
 )
 
 type ctxUserKey struct{}
@@ -12,15 +12,15 @@ type ctxUserKey struct{}
 func WithUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s := r.Header.Get("X-User-Id")
-		if s == "" {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		id, err := strconv.Atoi(s)
-		if err != nil || id <= 0 {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
+        if s == "" {
+            WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+            return
+        }
+        id, err := strconv.Atoi(s)
+        if err != nil || id <= 0 {
+            WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+            return
+        }
 		ctx := context.WithValue(r.Context(), ctxUserKey{}, int32(id))
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

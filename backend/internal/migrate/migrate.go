@@ -83,14 +83,13 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 }
 
 func alreadyApplied(ctx context.Context, pool *pgxpool.Pool, ns, ver string) (bool, error) {
-	var exists bool
-	if err := pool.QueryRow(ctx,
-		`SELECT true FROM schema_migrations WHERE namespace=$1 AND version=$2`,
-		ns, ver,
-	).Scan(&exists); err == nil {
-		return true, nil
-	} else {
-		// err from Scan likely means no rows; treat as not applied
-		return false, nil
-	}
+    var exists bool
+    err := pool.QueryRow(ctx,
+        `SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE namespace=$1 AND version=$2)`,
+        ns, ver,
+    ).Scan(&exists)
+    if err != nil {
+        return false, err
+    }
+    return exists, nil
 }

@@ -1,12 +1,12 @@
 package announcements
 
 import (
-	"encoding/json"
-	"net/http"
-	"strconv"
+    "encoding/json"
+    "net/http"
+    "strconv"
 
-	"coop.tools/backend/internal/httpmw"
-	"github.com/go-chi/chi/v5"
+    "coop.tools/backend/internal/httpmw"
+    "github.com/go-chi/chi/v5"
 )
 
 type Handlers struct {
@@ -19,10 +19,10 @@ func (h Handlers) List(w http.ResponseWriter, r *http.Request) {
 		if v, err := strconv.ParseInt(mid, 10, 32); err == nil {
 			v32 := int32(v)
 			memberID = &v32
-		} else {
-			http.Error(w, "invalid member_id", http.StatusBadRequest)
-			return
-		}
+        } else {
+            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid member_id")
+            return
+        }
 	}
 	filters := &ListFilters{}
 	if p := r.URL.Query().Get("priority"); p != "" {
@@ -42,10 +42,10 @@ func (h Handlers) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	items, err := h.Repo.List(r.Context(), memberID, filters)
-	if err != nil {
-		http.Error(w, "failed to list", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "failed to list")
+        return
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(items)
 }
@@ -57,27 +57,27 @@ func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
 		AuthorID *int32 `json:"author_id"`
 		Priority string `json:"priority"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
-		return
-	}
-	if len(in.Title) == 0 || len(in.Body) == 0 {
-		http.Error(w, "title and body required", http.StatusBadRequest)
-		return
-	}
+    if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid json")
+        return
+    }
+    if len(in.Title) == 0 || len(in.Body) == 0 {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "title and body required")
+        return
+    }
 	if in.Priority == "" {
 		in.Priority = "normal"
 	}
-	if in.Priority != "low" && in.Priority != "normal" && in.Priority != "high" && in.Priority != "urgent" {
-		http.Error(w, "invalid priority", http.StatusBadRequest)
-		return
-	}
+    if in.Priority != "low" && in.Priority != "normal" && in.Priority != "high" && in.Priority != "urgent" {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid priority")
+        return
+    }
 
 	a, err := h.Repo.Create(r.Context(), in.Title, in.Body, in.AuthorID, in.Priority)
-	if err != nil {
-		http.Error(w, "insert failed", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "insert failed")
+        return
+    }
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(a)
@@ -86,29 +86,29 @@ func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
 func (h Handlers) Get(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id64, err := strconv.ParseInt(idStr, 10, 32)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
 	var memberID *int32
 	if mid := r.URL.Query().Get("member_id"); mid != "" {
 		if v, err := strconv.ParseInt(mid, 10, 32); err == nil {
 			v32 := int32(v)
 			memberID = &v32
-		} else {
-			http.Error(w, "invalid member_id", http.StatusBadRequest)
-			return
-		}
+        } else {
+            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid member_id")
+            return
+        }
 	}
 	a, err := h.Repo.Get(r.Context(), int32(id64), memberID)
-	if err != nil {
-		if err == ErrNotFound {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, "query failed", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        if err == ErrNotFound {
+            httpmw.WriteJSONError(w, http.StatusNotFound, "not found")
+            return
+        }
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "query failed")
+        return
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(a)
 }
@@ -117,33 +117,33 @@ func (h Handlers) Get(w http.ResponseWriter, r *http.Request) {
 func (h Handlers) MarkRead(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id64, err := strconv.ParseInt(idStr, 10, 32)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
 	uid, ok := httpmw.CurrentUserID(r.Context())
-	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	if err := h.Repo.MarkAsRead(r.Context(), int32(id64), uid); err != nil {
-		if err == ErrNotFound {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, "failed to mark read", http.StatusInternalServerError)
-		return
-	}
+    if !ok {
+        httpmw.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
+    if err := h.Repo.MarkAsRead(r.Context(), int32(id64), uid); err != nil {
+        if err == ErrNotFound {
+            httpmw.WriteJSONError(w, http.StatusNotFound, "not found")
+            return
+        }
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "failed to mark read")
+        return
+    }
 	m := uid
 	a, err := h.Repo.Get(r.Context(), int32(id64), &m)
-	if err != nil {
-		if err == ErrNotFound {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, "query failed", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        if err == ErrNotFound {
+            httpmw.WriteJSONError(w, http.StatusNotFound, "not found")
+            return
+        }
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "query failed")
+        return
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(a)
 }
@@ -151,21 +151,21 @@ func (h Handlers) MarkRead(w http.ResponseWriter, r *http.Request) {
 // UnreadCount returns unread count for a member.
 func (h Handlers) UnreadCount(w http.ResponseWriter, r *http.Request) {
 	mid := r.URL.Query().Get("member_id")
-	if mid == "" {
-		http.Error(w, "member_id required", http.StatusBadRequest)
-		return
-	}
+    if mid == "" {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "member_id required")
+        return
+    }
 	v, err := strconv.ParseInt(mid, 10, 32)
-	if err != nil {
-		http.Error(w, "invalid member_id", http.StatusBadRequest)
-		return
-	}
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid member_id")
+        return
+    }
 	memberID := int32(v)
 	count, err := h.Repo.GetUnreadCount(r.Context(), memberID)
-	if err != nil {
-		http.Error(w, "failed to get unread count", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "failed to get unread count")
+        return
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(struct {
 		MemberID    int32 `json:"member_id"`

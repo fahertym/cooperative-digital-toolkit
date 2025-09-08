@@ -148,3 +148,15 @@ Responses:
 - JSON: `application/json`
 - CSV exports: `text/csv; charset=utf-8`
 - Health: `text/plain`
+
+Error envelope (JSON):
+```json
+{"error":"message"}
+```
+All error responses from JSON endpoints use this shape. Examples:
+- `400` invalid path param: `{ "error": "invalid id" }`
+- `401` missing auth: `{ "error": "unauthorized" }`
+- `404` missing resource: `{ "error": "not found" }`
+
+Idempotency behavior:
+- POST `/api/ledger` returns `201 Created` on first create and `200 OK` on idempotent replay for the same user and `X-Idempotency-Key`. Response body is the same resource JSON.

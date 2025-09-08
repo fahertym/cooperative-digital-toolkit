@@ -1,14 +1,15 @@
 package proposals
 
 import (
-	"encoding/csv"
-	"encoding/json"
-	"errors"
-	"net/http"
-	"strconv"
-	"time"
+    "encoding/csv"
+    "encoding/json"
+    "errors"
+    "net/http"
+    "strconv"
+    "time"
 
-	"github.com/go-chi/chi/v5"
+    "coop.tools/backend/internal/httpmw"
+    "github.com/go-chi/chi/v5"
 )
 
 type Handlers struct {
@@ -49,17 +50,21 @@ func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handlers) Get(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id64, _ := strconv.ParseInt(idStr, 10, 32)
-	p, err := h.Repo.Get(r.Context(), int32(id64))
+    idStr := chi.URLParam(r, "id")
+    id64, err := strconv.ParseInt(idStr, 10, 32)
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
+    p, err := h.Repo.Get(r.Context(), int32(id64))
 	if err != nil {
 		if err == ErrNotFound {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, "query failed", http.StatusInternalServerError)
-		return
-	}
+            httpmw.WriteJSONError(w, http.StatusNotFound, "not found")
+            return
+        }
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "query failed")
+        return
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(p)
 }
@@ -67,20 +72,24 @@ func (h Handlers) Get(w http.ResponseWriter, r *http.Request) {
 // Close transitions a proposal from open to closed.
 // POST /api/proposals/{id}/close
 func (h Handlers) Close(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id64, _ := strconv.ParseInt(idStr, 10, 32)
-	p, err := h.Repo.Close(r.Context(), int32(id64))
+    idStr := chi.URLParam(r, "id")
+    id64, err := strconv.ParseInt(idStr, 10, 32)
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
+    p, err := h.Repo.Close(r.Context(), int32(id64))
 	switch {
 	case err == nil:
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(p)
-	case errors.Is(err, ErrNotFound):
-		http.NotFound(w, r)
-	case errors.Is(err, ErrConflict):
-		http.Error(w, "proposal not open", http.StatusConflict)
-	default:
-		http.Error(w, "close failed", http.StatusInternalServerError)
-	}
+        case errors.Is(err, ErrNotFound):
+            httpmw.WriteJSONError(w, http.StatusNotFound, "not found")
+        case errors.Is(err, ErrConflict):
+            httpmw.WriteJSONError(w, http.StatusConflict, "proposal not open")
+        default:
+            httpmw.WriteJSONError(w, http.StatusInternalServerError, "close failed")
+        }
 }
 
 // ExportCSV streams all proposals as CSV

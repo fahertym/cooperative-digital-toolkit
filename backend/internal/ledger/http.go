@@ -1,13 +1,13 @@
 package ledger
 
 import (
-	"encoding/csv"
-	"encoding/json"
-	"net/http"
-	"strconv"
+    "encoding/csv"
+    "encoding/json"
+    "net/http"
+    "strconv"
 
-	"coop.tools/backend/internal/httpmw"
-	"github.com/go-chi/chi/v5"
+    "coop.tools/backend/internal/httpmw"
+    "github.com/go-chi/chi/v5"
 )
 
 type Handlers struct {
@@ -16,84 +16,89 @@ type Handlers struct {
 
 func (h Handlers) List(w http.ResponseWriter, r *http.Request) {
 	filters := &ListFilters{}
-	if t := r.URL.Query().Get("type"); t != "" {
-		filters.Type = t
-	}
+    if t := r.URL.Query().Get("type"); t != "" {
+        filters.Type = t
+    }
 	if mid := r.URL.Query().Get("member_id"); mid != "" {
 		v, err := strconv.ParseInt(mid, 10, 32)
-		if err != nil {
-			http.Error(w, "invalid member_id", http.StatusBadRequest)
-			return
-		}
+        if err != nil {
+            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid member_id")
+            return
+        }
 		v32 := int32(v)
 		filters.MemberID = &v32
 	}
 
 	items, err := h.Repo.List(r.Context(), filters)
-	if err != nil {
-		http.Error(w, "failed to list", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "failed to list")
+        return
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(items)
 }
 
 func (h Handlers) Create(w http.ResponseWriter, r *http.Request) {
 	memberID, ok := httpmw.CurrentUserID(r.Context())
-	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
+    if !ok {
+        httpmw.WriteJSONError(w, http.StatusUnauthorized, "unauthorized")
+        return
+    }
 	var in struct {
 		Type        string  `json:"type"`
 		Amount      float64 `json:"amount"`
 		Description string  `json:"description"`
 		Notes       string  `json:"notes"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
-		return
-	}
-	if len(in.Type) == 0 || len(in.Description) == 0 {
-		http.Error(w, "type and description required", http.StatusBadRequest)
-		return
-	}
-	if in.Amount == 0 {
-		http.Error(w, "amount must be non-zero", http.StatusBadRequest)
-		return
-	}
-	if in.Type != "dues" && in.Type != "contribution" && in.Type != "expense" && in.Type != "income" {
-		http.Error(w, "invalid type", http.StatusBadRequest)
-		return
-	}
+    if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid json")
+        return
+    }
+    if len(in.Type) == 0 || len(in.Description) == 0 {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "type and description required")
+        return
+    }
+    if in.Amount == 0 {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "amount must be non-zero")
+        return
+    }
+    if in.Type != "dues" && in.Type != "contribution" && in.Type != "expense" && in.Type != "income" {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid type")
+        return
+    }
 	idem := r.Header.Get("X-Idempotency-Key")
 	mid := memberID
-	e, err := h.Repo.Create(r.Context(), in.Type, in.Description, in.Amount, &mid, in.Notes, idem)
-	if err != nil {
-		http.Error(w, "insert failed", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(e)
+    e, replayed, err := h.Repo.Create(r.Context(), in.Type, in.Description, in.Amount, &mid, in.Notes, idem)
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "insert failed")
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    if replayed {
+        // Idempotent replay: return 200 to indicate existing resource
+        w.WriteHeader(http.StatusOK)
+    } else {
+        w.WriteHeader(http.StatusCreated)
+    }
+    _ = json.NewEncoder(w).Encode(e)
 }
 
 func (h Handlers) Get(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id64, err := strconv.ParseInt(idStr, 10, 32)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
+    idStr := chi.URLParam(r, "id")
+    id64, err := strconv.ParseInt(idStr, 10, 32)
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid id")
+        return
+    }
 	e, err := h.Repo.Get(r.Context(), int32(id64))
-	if err != nil {
-		if err == ErrNotFound {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, "query failed", http.StatusInternalServerError)
-		return
-	}
+    if err != nil {
+        if err == ErrNotFound {
+            httpmw.WriteJSONError(w, http.StatusNotFound, "not found")
+            return
+        }
+        httpmw.WriteJSONError(w, http.StatusInternalServerError, "query failed")
+        return
+    }
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(e)
 }

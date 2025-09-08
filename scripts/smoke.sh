@@ -58,6 +58,17 @@ echo "== Ledger Smoke: CSV header =="
 curl -fsS "$BASE/api/ledger/.csv" | head -n 1
 echo
 
+echo "== Error Shape: Missing Auth returns JSON {error} =="
+STATUS=$(curl -s -o /tmp/err.json -w '%{http_code}' -X POST "$BASE/api/ledger" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"dues","amount":10.00,"description":"No auth"}')
+if [ "$STATUS" != "401" ]; then
+  echo "expected 401, got $STATUS"; cat /tmp/err.json; exit 1
+fi
+jq -e '.error | type == "string"' </tmp/err.json >/dev/null || (echo "expected JSON error envelope"; cat /tmp/err.json; exit 1)
+echo "error envelope ok"
+echo
+
 echo "== Announcements Smoke: List (JSON array) =="
 curl -fsS "$BASE/api/announcements" | jq 'length' || (echo "announcements list failed" && exit 1)
 echo
@@ -96,5 +107,4 @@ curl -fsS "$BASE/api/proposals/$PROP_ID/votes/tally" | jq '{proposal_id,results,
 echo
 
 echo "Smoke OK ✅"
-
 
