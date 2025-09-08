@@ -6,6 +6,7 @@ import (
     "strconv"
 
     "coop.tools/backend/internal/httpmw"
+    "coop.tools/backend/internal/httpx"
     "github.com/go-chi/chi/v5"
 )
 
@@ -21,23 +22,10 @@ func (h Handlers) List(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    var limit, offset int
-    if ls := r.URL.Query().Get("limit"); ls != "" {
-        if v, err := strconv.Atoi(ls); err == nil && v > 0 {
-            if v > 200 { v = 200 }
-            limit = v
-        } else if err != nil {
-            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid limit")
-            return
-        }
-    }
-    if os := r.URL.Query().Get("offset"); os != "" {
-        if v, err := strconv.Atoi(os); err == nil && v >= 0 {
-            offset = v
-        } else if err != nil {
-            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid offset")
-            return
-        }
+    limit, offset, err := httpx.ParseLimitOffset(r, 200)
+    if err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid pagination")
+        return
     }
 
     items, err := h.Repo.List(r.Context(), int32(proposalID64), limit, offset)

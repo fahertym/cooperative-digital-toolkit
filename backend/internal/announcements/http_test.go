@@ -1,27 +1,27 @@
 package announcements
 
 import (
-	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-	"time"
+    "context"
+    "encoding/json"
+    "net/http"
+    "net/http/httptest"
+    "strings"
+    "testing"
+    "time"
 
-	"coop.tools/backend/internal/httpmw"
-	"github.com/go-chi/chi/v5"
+    "coop.tools/backend/internal/httpmw"
+    "github.com/go-chi/chi/v5"
 )
 
 // ---- Mock Repo ----
 
 type mockRepo struct {
-	announcements []Announcement
-	reads         []AnnouncementRead
-	nextID        int32
+    announcements []Announcement
+    reads         []AnnouncementRead
+    nextID        int32
 }
 
-func (m *mockRepo) List(ctx context.Context, memberID *int32, filters *ListFilters) ([]AnnouncementWithReadStatus, error) {
+func (m *mockRepo) List(ctx context.Context, memberID *int64, filters *ListFilters) ([]AnnouncementWithReadStatus, error) {
 	var out []AnnouncementWithReadStatus
 
 	for _, announcement := range m.announcements {
@@ -32,11 +32,11 @@ func (m *mockRepo) List(ctx context.Context, memberID *int32, filters *ListFilte
 			if filters.Priority != "" && announcement.Priority != filters.Priority {
 				include = false
 			}
-			if filters.AuthorID != nil {
-				if announcement.AuthorID == nil || *announcement.AuthorID != *filters.AuthorID {
-					include = false
-				}
-			}
+            if filters.AuthorID != nil {
+                if announcement.AuthorID == nil || *announcement.AuthorID != *filters.AuthorID {
+                    include = false
+                }
+            }
 			// Skip date filters in mock for simplicity
 		}
 
@@ -46,17 +46,17 @@ func (m *mockRepo) List(ctx context.Context, memberID *int32, filters *ListFilte
 				IsRead:       false,
 				ReadAt:       nil,
 			}
-			if memberID != nil {
-				item.MemberID = *memberID
+            if memberID != nil {
+                item.MemberID = *memberID
 				// Check if this member has read this announcement
 				for _, read := range m.reads {
-					if read.AnnouncementID == announcement.ID && read.MemberID == *memberID {
-						item.IsRead = true
-						item.ReadAt = &read.ReadAt
-						break
-					}
-				}
-			}
+                    if read.AnnouncementID == announcement.ID && read.MemberID == *memberID {
+                        item.IsRead = true
+                        item.ReadAt = &read.ReadAt
+                        break
+                    }
+                }
+            }
 
 			// Apply unread filter
 			if filters != nil && filters.OnlyUnread && item.IsRead {
@@ -70,7 +70,7 @@ func (m *mockRepo) List(ctx context.Context, memberID *int32, filters *ListFilte
 	return out, nil
 }
 
-func (m *mockRepo) Get(ctx context.Context, id int32, memberID *int32) (AnnouncementWithReadStatus, error) {
+func (m *mockRepo) Get(ctx context.Context, id int32, memberID *int64) (AnnouncementWithReadStatus, error) {
 	for _, announcement := range m.announcements {
 		if announcement.ID == id {
 			item := AnnouncementWithReadStatus{
@@ -78,24 +78,24 @@ func (m *mockRepo) Get(ctx context.Context, id int32, memberID *int32) (Announce
 				IsRead:       false,
 				ReadAt:       nil,
 			}
-			if memberID != nil {
-				item.MemberID = *memberID
-				// Check if this member has read this announcement
-				for _, read := range m.reads {
-					if read.AnnouncementID == id && read.MemberID == *memberID {
-						item.IsRead = true
-						item.ReadAt = &read.ReadAt
-						break
-					}
-				}
-			}
+            if memberID != nil {
+                item.MemberID = *memberID
+                // Check if this member has read this announcement
+                for _, read := range m.reads {
+                    if read.AnnouncementID == id && read.MemberID == *memberID {
+                        item.IsRead = true
+                        item.ReadAt = &read.ReadAt
+                        break
+                    }
+                }
+            }
 			return item, nil
 		}
 	}
 	return AnnouncementWithReadStatus{}, ErrNotFound
 }
 
-func (m *mockRepo) Create(ctx context.Context, title, body string, authorID *int32, priority string) (Announcement, error) {
+func (m *mockRepo) Create(ctx context.Context, title, body string, authorID *int64, priority string) (Announcement, error) {
 	if m.nextID == 0 {
 		m.nextID = 1
 	}
@@ -115,7 +115,7 @@ func (m *mockRepo) Create(ctx context.Context, title, body string, authorID *int
 	return announcement, nil
 }
 
-func (m *mockRepo) MarkAsRead(ctx context.Context, announcementID, memberID int32) error {
+func (m *mockRepo) MarkAsRead(ctx context.Context, announcementID int32, memberID int64) error {
 	// Check if already read
 	for _, read := range m.reads {
 		if read.AnnouncementID == announcementID && read.MemberID == memberID {
@@ -124,16 +124,16 @@ func (m *mockRepo) MarkAsRead(ctx context.Context, announcementID, memberID int3
 	}
 
 	// Add read record
-	read := AnnouncementRead{
-		AnnouncementID: announcementID,
-		MemberID:       memberID,
-		ReadAt:         time.Now(),
-	}
+    read := AnnouncementRead{
+        AnnouncementID: announcementID,
+        MemberID:       memberID,
+        ReadAt:         time.Now(),
+    }
 	m.reads = append(m.reads, read)
 	return nil
 }
 
-func (m *mockRepo) GetUnreadCount(ctx context.Context, memberID int32) (int, error) {
+func (m *mockRepo) GetUnreadCount(ctx context.Context, memberID int64) (int, error) {
 	count := 0
 	for _, announcement := range m.announcements {
 		isRead := false
@@ -167,14 +167,14 @@ func setupRouter(repo Repo) *chi.Mux {
 // ---- Tests ----
 
 func TestHandlers_List(t *testing.T) {
-	authorID1 := int32(1)
-	authorID2 := int32(2)
+    authorID1 := int64(1)
+    authorID2 := int64(2)
 
 	repo := &mockRepo{
 		announcements: []Announcement{
-			{ID: 1, Title: "Urgent Notice", Body: "Important announcement", AuthorID: &authorID1, Priority: "urgent"},
-			{ID: 2, Title: "Normal Update", Body: "Regular update", AuthorID: &authorID2, Priority: "normal"},
-			{ID: 3, Title: "Low Priority", Body: "Less important info", AuthorID: nil, Priority: "low"},
+            {ID: 1, Title: "Urgent Notice", Body: "Important announcement", AuthorID: &authorID1, Priority: "urgent"},
+            {ID: 2, Title: "Normal Update", Body: "Regular update", AuthorID: &authorID2, Priority: "normal"},
+            {ID: 3, Title: "Low Priority", Body: "Less important info", AuthorID: nil, Priority: "low"},
 		},
 	}
 
@@ -345,10 +345,10 @@ func TestHandlers_Create(t *testing.T) {
 }
 
 func TestHandlers_Get(t *testing.T) {
-	authorID := int32(1)
+    authorID := int64(1)
 	repo := &mockRepo{
 		announcements: []Announcement{
-			{ID: 1, Title: "Test Announcement", Body: "Test body", AuthorID: &authorID, Priority: "normal"},
+            {ID: 1, Title: "Test Announcement", Body: "Test body", AuthorID: &authorID, Priority: "normal"},
 		},
 	}
 	r := setupRouter(repo)
@@ -390,7 +390,7 @@ func TestHandlers_Get(t *testing.T) {
 }
 
 func TestHandlers_MarkAsRead(t *testing.T) {
-	authorID := int32(1)
+    authorID := int64(1)
 	repo := &mockRepo{
 		announcements: []Announcement{
 			{ID: 1, Title: "Test Announcement", Body: "Test body", AuthorID: &authorID, Priority: "normal"},
@@ -440,12 +440,12 @@ func TestHandlers_MarkAsRead(t *testing.T) {
 }
 
 func TestHandlers_GetUnreadCount(t *testing.T) {
-	authorID := int32(1)
+    authorID := int64(1)
 	repo := &mockRepo{
 		announcements: []Announcement{
-			{ID: 1, Title: "Unread 1", Body: "Test", AuthorID: &authorID, Priority: "normal"},
-			{ID: 2, Title: "Unread 2", Body: "Test", AuthorID: &authorID, Priority: "normal"},
-			{ID: 3, Title: "Read", Body: "Test", AuthorID: &authorID, Priority: "normal"},
+            {ID: 1, Title: "Unread 1", Body: "Test", AuthorID: &authorID, Priority: "normal"},
+            {ID: 2, Title: "Unread 2", Body: "Test", AuthorID: &authorID, Priority: "normal"},
+            {ID: 3, Title: "Read", Body: "Test", AuthorID: &authorID, Priority: "normal"},
 		},
 		reads: []AnnouncementRead{
 			{AnnouncementID: 3, MemberID: 5, ReadAt: time.Now()}, // Member 5 has read announcement 3
@@ -462,10 +462,10 @@ func TestHandlers_GetUnreadCount(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 
-	var response struct {
-		MemberID    int32 `json:"member_id"`
-		UnreadCount int   `json:"unread_count"`
-	}
+    var response struct {
+        MemberID    int64 `json:"member_id"`
+        UnreadCount int   `json:"unread_count"`
+    }
 	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
 		t.Fatal("failed to parse json:", err)
 	}

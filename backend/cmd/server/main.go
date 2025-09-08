@@ -31,21 +31,21 @@ func main() {
 	defer store.Close()
 
 	// NEW: domain-owned migrations
-	if err := proposals.ApplyMigrations(ctx, store.Pool); err != nil {
-		log.Fatal("proposals migrations:", err)
-	}
-	if err := ledger.ApplyMigrations(ctx, store.Pool); err != nil {
-		log.Fatal("ledger migrations:", err)
-	}
-	if err := announcements.ApplyMigrations(ctx, store.Pool); err != nil {
-		log.Fatal("announcements migrations:", err)
-	}
-	if err := votes.ApplyMigrations(ctx, store.Pool); err != nil {
-		log.Fatal("votes migrations:", err)
-	}
-	if err := members.ApplyMigrations(ctx, store.Pool); err != nil {
-		log.Fatal("members migrations:", err)
-	}
+    if err := proposals.ApplyMigrations(ctx, store.Pool); err != nil {
+        log.Fatal("proposals migrations:", err)
+    }
+    if err := ledger.ApplyMigrations(ctx, store.Pool); err != nil {
+        log.Fatal("ledger migrations:", err)
+    }
+    if err := votes.ApplyMigrations(ctx, store.Pool); err != nil {
+        log.Fatal("votes migrations:", err)
+    }
+    if err := members.ApplyMigrations(ctx, store.Pool); err != nil {
+        log.Fatal("members migrations:", err)
+    }
+    if err := announcements.ApplyMigrations(ctx, store.Pool); err != nil {
+        log.Fatal("announcements migrations:", err)
+    }
 
 	corsOrigin := db.Env("CORS_ORIGIN", "http://localhost:5173")
 

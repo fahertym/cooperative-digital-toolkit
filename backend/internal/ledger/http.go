@@ -7,6 +7,7 @@ import (
     "strconv"
 
     "coop.tools/backend/internal/httpmw"
+    "coop.tools/backend/internal/httpx"
     "github.com/go-chi/chi/v5"
 )
 
@@ -28,25 +29,10 @@ func (h Handlers) List(w http.ResponseWriter, r *http.Request) {
         v32 := int32(v)
         filters.MemberID = &v32
     }
-    if ls := r.URL.Query().Get("limit"); ls != "" {
-        if v, err := strconv.Atoi(ls); err == nil && v > 0 {
-            if v > 200 {
-                v = 200
-            }
-            filters.Limit = v
-        } else if err != nil {
-            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid limit")
-            return
-        }
-    }
-    if os := r.URL.Query().Get("offset"); os != "" {
-        if v, err := strconv.Atoi(os); err == nil && v >= 0 {
-            filters.Offset = v
-        } else if err != nil {
-            httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid offset")
-            return
-        }
-    }
+    if lim, off, err := httpx.ParseLimitOffset(r, 200); err != nil {
+        httpmw.WriteJSONError(w, http.StatusBadRequest, "invalid pagination")
+        return
+    } else { filters.Limit, filters.Offset = lim, off }
 
     items, err := h.Repo.List(r.Context(), filters)
     if err != nil {

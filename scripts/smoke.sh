@@ -10,9 +10,16 @@ echo
 
 echo "== Auth: Create admin member =="
 if [ -z "$USER" ]; then
-  USER=$(curl -fsS -X POST "$BASE/api/members" \
+  # Try create; on 409 fetch existing by email
+  RESP_CODE=$(curl -s -o /tmp/member.json -w '%{http_code}' -X POST "$BASE/api/members" \
     -H 'Content-Type: application/json' \
-    -d '{"email":"admin@example.com","display_name":"Admin","role":"admin"}' | jq -r '.id')
+    -d '{"email":"admin@example.com","display_name":"Admin","role":"admin"}')
+  if [ "$RESP_CODE" = "201" ]; then
+    USER=$(jq -r '.id' </tmp/member.json)
+  else
+    # Fallback to lookup
+    USER=$(curl -fsS "$BASE/api/members?email=admin@example.com" | jq -r '.id')
+  fi
 fi
 echo "Using member id=$USER"
 echo
