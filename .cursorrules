@@ -1,16 +1,103 @@
 
-You are assisting with an open-source Cooperative Digital Toolkit.
+# Cooperative Digital Toolkit — Cursor Rules
 
-Non-negotiables:
-- Encode cooperative values: transparency, democratic control, low TCO.
-- Prefer Go + Svelte + PostgreSQL; offline-first UX.
-- Modular monolith first, microservices only when metrics demand.
+[project.identity]
+name = "Cooperative Digital Toolkit"
+license = "Apache-2.0"
+mission = "Member-owned digital commons for governance, finance (light), and portal tooling."
 
-Style:
-- Small, composable modules with clear interfaces.
-- Tests first; public APIs documented in /docs.
-- Avoid vendor lock-in; permissive licenses.
+[project.principles]
+# Democratic control, member-first, FOSS, accessibility, sustainability
+# Source: docs/02-coop-principles-rubric.md
+enforce = true
 
-Cursor Tasks:
-- When generating code, update docs in /docs accordingly.
-- Keep issue titles in Conventional Commits style.
+[stack.current]
+backend = "Go (chi, pgxpool)"
+db = "PostgreSQL"
+frontend = "Svelte (migrate to SvelteKit)"
+migrations = "embed FS + internal/migrate"
+ci = "GitHub Actions with smoke job"
+# Anchors
+server_main = "backend/cmd/server/main.go"
+proposals_domain = "backend/internal/proposals"
+migrate_pkg = "backend/internal/migrate"
+docs_root = "docs"
+
+[stack.next]
+auth = "WebAuthn or email-link sessions; replace dev Admin toggle"
+offline = "Read cache + queued create + sync journal"
+domains = ["ledger", "announcements", "voting"]
+federation = "Design-only: CockroachDB path, DID/VC later"
+
+[api.current]
+health = "GET /healthz"
+proposals = [
+  "GET /api/proposals",
+  "POST /api/proposals",
+  "GET /api/proposals/{id}",
+  "POST /api/proposals/{id}/close",
+  "GET /api/proposals/.csv"
+]
+
+[api.todo]
+voting = [
+  "POST /api/proposals/{id}/votes",
+  "GET /api/proposals/{id}/votes",
+  "GET /api/proposals/{id}/tally"
+]
+ledger = [
+  "GET /api/ledger",
+  "POST /api/ledger",
+  "GET /api/ledger/.csv"
+]
+announcements = [
+  "GET /api/announcements",
+  "POST /api/announcements",
+  "POST /api/announcements/{id}/read"
+]
+auth = [
+  "POST /api/auth/register",
+  "POST /api/auth/login",
+  "POST /api/auth/webauthn/begin",
+  "POST /api/auth/webauthn/finish"
+]
+
+[coding.standards]
+errors = ["400 invalid input", "404 not found", "409 conflict", "500 server error"]
+csv_exports = true
+json_fields_style = "snake_case in JSON; consistent with proposals handlers"
+testing = "unit tests per handler; mirror proposals/http_test.go patterns"
+logging = "structured logs; request IDs; minimal PII"
+
+[ci.requirements]
+unit = "go test ./... in backend"
+smoke = "scripts/smoke.sh hits healthz and domain endpoints"
+docs = [
+  "docs/22-api-spec.md updated",
+  "docs/23-data-models.md updated",
+  "docs/20-architecture-overview.md updated",
+  "docs/24-security-identity.md updated",
+  "docs/41-onboarding-guides.md updated"
+]
+pr_template = ".github/PULL_REQUEST_TEMPLATE.md checklist must pass"
+
+[dx.commands]
+run_backend = "cd backend && go run ./cmd/server"
+migrate_db = "auto via proposals.ApplyMigrations() on boot"
+smoke = "./scripts/smoke.sh"
+dev_db = "postgres:16 (see GH Actions service config)"
+
+[boundaries]
+do_not = [
+  "Implement full accounting or POS in MVP",
+  "Introduce microservices prematurely"
+]
+
+[checklist.before-commit]
+items = [
+  "Tests updated and passing",
+  "API spec + data models updated",
+  "CSV exports verified",
+  "Smoke script updated when endpoints change",
+  "Docs and onboarding synced with feature changes"
+]

@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"coop.tools/backend/internal/db"
+	"coop.tools/backend/internal/ledger"
 	"coop.tools/backend/internal/proposals"
 )
 
@@ -28,6 +29,9 @@ func main() {
 	// NEW: domain-owned migrations
 	if err := proposals.ApplyMigrations(ctx, store.Pool); err != nil {
 		log.Fatal("proposals migrations:", err)
+	}
+	if err := ledger.ApplyMigrations(ctx, store.Pool); err != nil {
+		log.Fatal("ledger migrations:", err)
 	}
 
 	corsOrigin := db.Env("CORS_ORIGIN", "http://localhost:5173")
@@ -49,9 +53,15 @@ func main() {
 
 	// API
 	r.Route("/api", func(api chi.Router) {
+		// Proposals
 		propRepo := proposals.NewPgRepo(store.Pool)
 		propHandlers := proposals.Handlers{Repo: propRepo}
 		proposals.Mount(api, propHandlers)
+
+		// Ledger
+		ledgerRepo := ledger.NewPgRepo(store.Pool)
+		ledgerHandlers := ledger.Handlers{Repo: ledgerRepo}
+		ledger.Mount(api, ledgerHandlers)
 	})
 
 	addr := ":" + db.Env("PORT", "8080")
