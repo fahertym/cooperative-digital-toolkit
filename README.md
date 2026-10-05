@@ -1,3 +1,9 @@
+> [!IMPORTANT]
+> **Inactive / historical repository.** Historical cooperative application/toolkit experiment. It is useful product lineage, but current cooperative institutional architecture lives in InterCooperative-Network/icn + InterCooperative-Network/nycn rather than this standalone SaaS-style stack.
+> **Current related work:** [InterCooperative-Network/nycn](https://github.com/InterCooperative-Network/nycn)
+>
+> Preserved for project archaeology. Do not infer current system state from this repository.
+
 
 # Cooperative Digital Toolkit
 
